@@ -1,6 +1,0 @@
-{
-  "name": "SmartLogix",
-  "description": "Plataforma inteligente de gestión de logística y cadena de suministro con monitoreo satelital en tiempo real.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
