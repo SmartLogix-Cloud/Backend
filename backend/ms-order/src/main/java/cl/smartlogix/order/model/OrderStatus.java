@@ -1,11 +1,11 @@
 package cl.smartlogix.order.model;
 
 public enum OrderStatus {
-    PENDIENTE,
+    PENDIENTE_PREPARACION,
     APROBADO,
-    EN_PREPARACION,
-    ENVIADO,
-    ENTREGADO,
     RECHAZADO,
-    CANCELADO
+    EN_PREPARACION,
+    CANCELADO,
+    FINALIZADO,
+    INCIDENCIA
 }

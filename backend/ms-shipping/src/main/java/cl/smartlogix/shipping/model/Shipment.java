@@ -36,8 +36,8 @@ public class Shipment {
     private String trackingNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false, length = 20)
-    private ShipmentState status = ShipmentState.CREADO;
+    @Column(name = "estado", nullable = false, length = 30)
+    private ShipmentState status = ShipmentState.LISTO_PARA_RETIRO;
 
     @Column(name = "direccion_destino", nullable = false, length = 255)
     private String destinationAddress;

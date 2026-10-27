@@ -26,7 +26,7 @@ public class ShipmentTracking {
     private Shipment shipment;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false, length = 20)
+    @Column(name = "estado", nullable = false, length = 30)
     private ShipmentState status;
 
     @Column(name = "ubicacion", length = 255)

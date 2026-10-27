@@ -20,4 +20,12 @@ public interface ShipmentService {
 
     ShipmentDto assignCarrier(Long shipmentId, AssingCarierRequest req);
     ShipmentDto changeStatus(Long shipmentId, UpdateShipmentRStatusRequest req);
+
+    // --- Reacciones a eventos de ms-order (consumidas via RabbitMQ) ---
+
+    /** Un pedido quedo listo: crea el envio asociado (idempotente por pedido). */
+    void onOrderReadyForShipment(Long orderId, String orderCode);
+
+    /** Un pedido fue cancelado: marca para no despachar los envios aun en preparacion. */
+    void onOrderCancelled(Long orderId);
 }

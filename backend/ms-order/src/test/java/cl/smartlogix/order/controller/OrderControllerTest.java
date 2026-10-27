@@ -57,7 +57,7 @@ class OrderControllerTest {
                 1L,
                 "PED-20250621-ABC123",
                 OrderType.ESTANDAR,
-                OrderStatus.PENDIENTE,
+                OrderStatus.PENDIENTE_PREPARACION,
                 "CLIENTE-1",
                 "SHOPIFY",
                 new BigDecimal("1000.00"),
@@ -158,17 +158,17 @@ class OrderControllerTest {
     @Test
     void listShouldFilterByStatus() throws Exception {
 
-        when(service.findByStatus(OrderStatus.PENDIENTE))
+        when(service.findByStatus(OrderStatus.PENDIENTE_PREPARACION))
                 .thenReturn(List.of(buildOrderDto()));
 
         mockMvc.perform(
                         get("/orders")
-                                .param("status", "PENDIENTE")
+                                .param("status", "PENDIENTE_PREPARACION")
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("PENDIENTE"));
+                .andExpect(jsonPath("$[0].status").value("PENDIENTE_PREPARACION"));
 
-        verify(service).findByStatus(OrderStatus.PENDIENTE);
+        verify(service).findByStatus(OrderStatus.PENDIENTE_PREPARACION);
     }
 
     @Test

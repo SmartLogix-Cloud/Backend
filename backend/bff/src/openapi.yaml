@@ -133,7 +133,7 @@ components:
         idEnvio: { type: integer }
         idPedido: { type: integer }
         trackingNumber: { type: string }
-        estado: { type: string, enum: [CREADO, ASIGNADO, EN_RUTA, INCIDENCIA, ENTREGADO] }
+        estado: { type: string, enum: [LISTO_PARA_RETIRO, RETIRADO, EN_TRANSITO, ENTREGADO, PERDIDO, RETRASADO, ENTREGA_FALLIDA] }
         direccionDestino: { type: string }
 
     ProblemDetail:

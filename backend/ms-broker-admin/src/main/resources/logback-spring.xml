@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging de SmartLogix + appender de GlitchTip (SDK de Sentry).
+  Mantiene la consola por defecto de Spring Boot y agrega un appender que envia
+  todo log nivel ERROR a GlitchTip. El DSN se lee de la env SENTRY_DSN; si esta
+  vacia, el appender queda deshabilitado (no-op).
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+        <options>
+            <dsn>${SENTRY_DSN:-}</dsn>
+            <environment>${SENTRY_ENVIRONMENT:-development}</environment>
+        </options>
+        <minimumEventLevel>ERROR</minimumEventLevel>
+        <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="SENTRY"/>
+    </root>
+</configuration>

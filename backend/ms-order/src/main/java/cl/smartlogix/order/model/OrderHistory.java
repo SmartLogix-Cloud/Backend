@@ -26,11 +26,11 @@ public class OrderHistory {
     private Order order;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado_anterior", length = 20)
+    @Column(name = "estado_anterior", length = 30)
     private OrderStatus previousStatus;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado_nuevo", nullable = false, length = 20)
+    @Column(name = "estado_nuevo", nullable = false, length = 30)
     private OrderStatus newStatus;
 
     @Column(name = "motivo", length = 255)

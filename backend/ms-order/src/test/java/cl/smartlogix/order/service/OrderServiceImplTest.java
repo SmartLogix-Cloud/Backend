@@ -6,6 +6,7 @@ import cl.smartlogix.order.dto.UpdateOrderState;
 import cl.smartlogix.order.factory.ExpressOrderFactory;
 import cl.smartlogix.order.factory.OrderFactoryProvider;
 import cl.smartlogix.order.factory.StandardOrderFactory;
+import cl.smartlogix.order.messaging.OrderEventsPublisher;
 import cl.smartlogix.order.model.Order;
 import cl.smartlogix.order.model.OrderStatus;
 import cl.smartlogix.order.model.OrderType;
@@ -31,6 +32,9 @@ class OrderServiceImplTest {
     @Mock
     private OrderRepository repository;
 
+    @Mock
+    private OrderEventsPublisher eventsPublisher;
+
     private OrderServiceImpl service;
 
     private CreateOrderRequest request;
@@ -41,7 +45,7 @@ class OrderServiceImplTest {
         // Provider real con los dos creadores concretos (Factory Method).
         OrderFactoryProvider factoryProvider = new OrderFactoryProvider(
                 List.of(new StandardOrderFactory(), new ExpressOrderFactory()));
-        service = new OrderServiceImpl(repository, factoryProvider);
+        service = new OrderServiceImpl(repository, factoryProvider, eventsPublisher);
 
         CreateOrderRequest.ItemRequest item =
                 new CreateOrderRequest.ItemRequest(
@@ -68,7 +72,7 @@ class OrderServiceImplTest {
         OrderDto dto = service.create(request);
 
         assertNotNull(dto);
-        assertEquals(OrderStatus.PENDIENTE, dto.status());
+        assertEquals(OrderStatus.PENDIENTE_PREPARACION, dto.status());
 
         verify(repository).save(any(Order.class));
     }
@@ -147,7 +151,7 @@ class OrderServiceImplTest {
 
         assertEquals(1, saved.getHistory().size());
         assertEquals(
-                OrderStatus.PENDIENTE,
+                OrderStatus.PENDIENTE_PREPARACION,
                 saved.getHistory().get(0).getNewStatus()
         );
     }
@@ -175,7 +179,7 @@ class OrderServiceImplTest {
         Order order = Order.builder()
                 .id(1L)
                 .code("PED-001")
-                .status(OrderStatus.PENDIENTE)
+                .status(OrderStatus.PENDIENTE_PREPARACION)
                 .type(OrderType.ESTANDAR)
                 .customerId("CLIENTE")
                 .build();
@@ -206,7 +210,7 @@ class OrderServiceImplTest {
         Order order = Order.builder()
                 .id(1L)
                 .code("PED-001")
-                .status(OrderStatus.PENDIENTE)
+                .status(OrderStatus.PENDIENTE_PREPARACION)
                 .type(OrderType.ESTANDAR)
                 .customerId("CLIENTE")
                 .build();
@@ -237,7 +241,7 @@ class OrderServiceImplTest {
         Order order = Order.builder()
                 .id(1L)
                 .code("PED-001")
-                .status(OrderStatus.PENDIENTE)
+                .status(OrderStatus.PENDIENTE_PREPARACION)
                 .type(OrderType.ESTANDAR)
                 .customerId("CLIENTE")
                 .build();
@@ -256,16 +260,16 @@ class OrderServiceImplTest {
         Order order = Order.builder()
                 .id(1L)
                 .code("PED-001")
-                .status(OrderStatus.PENDIENTE)
+                .status(OrderStatus.PENDIENTE_PREPARACION)
                 .type(OrderType.ESTANDAR)
                 .customerId("CLIENTE")
                 .build();
 
-        when(repository.findByStatus(OrderStatus.PENDIENTE))
+        when(repository.findByStatus(OrderStatus.PENDIENTE_PREPARACION))
                 .thenReturn(List.of(order));
 
         List<OrderDto> result =
-                service.findByStatus(OrderStatus.PENDIENTE);
+                service.findByStatus(OrderStatus.PENDIENTE_PREPARACION);
 
         assertEquals(1, result.size());
     }
@@ -276,7 +280,7 @@ class OrderServiceImplTest {
         Order order = Order.builder()
                 .id(1L)
                 .code("PED-001")
-                .status(OrderStatus.PENDIENTE)
+                .status(OrderStatus.PENDIENTE_PREPARACION)
                 .type(OrderType.ESTANDAR)
                 .customerId("CLIENTE")
                 .build();
@@ -296,7 +300,7 @@ class OrderServiceImplTest {
         Order order = Order.builder()
                 .id(1L)
                 .code("PED-001")
-                .status(OrderStatus.PENDIENTE)
+                .status(OrderStatus.PENDIENTE_PREPARACION)
                 .type(OrderType.ESTANDAR)
                 .customerId("CLIENTE")
                 .build();
@@ -328,7 +332,7 @@ class OrderServiceImplTest {
         Order order = Order.builder()
                 .id(1L)
                 .code("PED-001")
-                .status(OrderStatus.PENDIENTE)
+                .status(OrderStatus.PENDIENTE_PREPARACION)
                 .type(OrderType.ESTANDAR)
                 .customerId("CLIENTE")
                 .build();
@@ -356,7 +360,7 @@ class OrderServiceImplTest {
         Order order = Order.builder()
                 .id(1L)
                 .code("PED-001")
-                .status(OrderStatus.PENDIENTE)
+                .status(OrderStatus.PENDIENTE_PREPARACION)
                 .type(OrderType.ESTANDAR)
                 .customerId("CLIENTE")
                 .build();
@@ -366,7 +370,7 @@ class OrderServiceImplTest {
 
         UpdateOrderState request =
                 new UpdateOrderState(
-                        OrderStatus.ENTREGADO,
+                        OrderStatus.FINALIZADO,
                         "salto invalido"
                 );
 

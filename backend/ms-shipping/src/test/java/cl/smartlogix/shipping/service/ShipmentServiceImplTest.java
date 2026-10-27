@@ -3,6 +3,7 @@ package cl.smartlogix.shipping.service;
 import cl.smartlogix.shipping.dto.AssingCarierRequest;
 import cl.smartlogix.shipping.dto.CreateShipmentRequest;
 import cl.smartlogix.shipping.dto.UpdateShipmentRStatusRequest;
+import cl.smartlogix.shipping.messaging.ShipmentEventsPublisher;
 import cl.smartlogix.shipping.model.Carrier;
 import cl.smartlogix.shipping.model.Shipment;
 import cl.smartlogix.shipping.model.ShipmentState;
@@ -27,6 +28,7 @@ class ShipmentServiceImplTest {
     private ShipmentRepository shipmentRepository;
     private CarrierRepository carrierRepository;
     private ShipmentTrackingRepository trackingRepository;
+    private ShipmentEventsPublisher eventsPublisher;
 
     private ShipmentServiceImpl service;
 
@@ -36,11 +38,13 @@ class ShipmentServiceImplTest {
         shipmentRepository = mock(ShipmentRepository.class);
         carrierRepository = mock(CarrierRepository.class);
         trackingRepository = mock(ShipmentTrackingRepository.class);
+        eventsPublisher = mock(ShipmentEventsPublisher.class);
 
         service = new ShipmentServiceImpl(
                 shipmentRepository,
                 carrierRepository,
-                trackingRepository
+                trackingRepository,
+                eventsPublisher
         );
     }
 
@@ -67,7 +71,7 @@ class ShipmentServiceImplTest {
 
         assertNotNull(result);
         assertEquals(10L, result.orderId());
-        assertEquals(ShipmentState.CREADO, result.status());
+        assertEquals(ShipmentState.LISTO_PARA_RETIRO, result.status());
 
         verify(shipmentRepository).save(any());
     }
@@ -79,7 +83,7 @@ class ShipmentServiceImplTest {
                 .id(1L)
                 .orderId(10L)
                 .destinationAddress("Destino")
-                .status(ShipmentState.CREADO)
+                .status(ShipmentState.LISTO_PARA_RETIRO)
                 .build();
 
         when(shipmentRepository.findById(1L))
@@ -109,7 +113,7 @@ class ShipmentServiceImplTest {
                 .id(1L)
                 .trackingNumber("ENV-001")
                 .destinationAddress("Destino")
-                .status(ShipmentState.CREADO)
+                .status(ShipmentState.LISTO_PARA_RETIRO)
                 .build();
 
         when(shipmentRepository.findByTrackingNumber("ENV-001"))
@@ -130,7 +134,7 @@ class ShipmentServiceImplTest {
                                 Shipment.builder()
                                         .id(1L)
                                         .destinationAddress("A")
-                                        .status(ShipmentState.CREADO)
+                                        .status(ShipmentState.LISTO_PARA_RETIRO)
                                         .build()
                         )
                 );
@@ -141,20 +145,20 @@ class ShipmentServiceImplTest {
     @Test
     void shouldFindByStatus() {
 
-        when(shipmentRepository.findByStatus(ShipmentState.CREADO))
+        when(shipmentRepository.findByStatus(ShipmentState.LISTO_PARA_RETIRO))
                 .thenReturn(
                         List.of(
                                 Shipment.builder()
                                         .id(1L)
                                         .destinationAddress("A")
-                                        .status(ShipmentState.CREADO)
+                                        .status(ShipmentState.LISTO_PARA_RETIRO)
                                         .build()
                         )
                 );
 
         assertEquals(
                 1,
-                service.findByStatus(ShipmentState.CREADO).size()
+                service.findByStatus(ShipmentState.LISTO_PARA_RETIRO).size()
         );
     }
 
@@ -168,7 +172,7 @@ class ShipmentServiceImplTest {
                                         .id(1L)
                                         .orderId(10L)
                                         .destinationAddress("A")
-                                        .status(ShipmentState.CREADO)
+                                        .status(ShipmentState.LISTO_PARA_RETIRO)
                                         .build()
                         )
                 );
@@ -185,7 +189,7 @@ class ShipmentServiceImplTest {
         ShipmentTracking tracking =
                 ShipmentTracking.builder()
                         .id(1L)
-                        .status(ShipmentState.CREADO)
+                        .status(ShipmentState.LISTO_PARA_RETIRO)
                         .comment("Creado")
                         .build();
 
@@ -213,7 +217,7 @@ class ShipmentServiceImplTest {
                 Shipment.builder()
                         .id(1L)
                         .destinationAddress("Destino")
-                        .status(ShipmentState.CREADO)
+                        .status(ShipmentState.LISTO_PARA_RETIRO)
                         .build();
 
         when(shipmentRepository.findById(1L))
@@ -232,7 +236,7 @@ class ShipmentServiceImplTest {
                 );
 
         assertEquals(
-                ShipmentState.ASIGNADO,
+                ShipmentState.LISTO_PARA_RETIRO,
                 result.status()
         );
     }
@@ -244,7 +248,7 @@ class ShipmentServiceImplTest {
                 Shipment.builder()
                         .id(1L)
                         .destinationAddress("Destino")
-                        .status(ShipmentState.EN_RUTA)
+                        .status(ShipmentState.EN_TRANSITO)
                         .build();
 
         when(shipmentRepository.findById(1L))
@@ -266,7 +270,7 @@ class ShipmentServiceImplTest {
                 Shipment.builder()
                         .id(1L)
                         .destinationAddress("Destino")
-                        .status(ShipmentState.ASIGNADO)
+                        .status(ShipmentState.RETIRADO)
                         .build();
 
         when(shipmentRepository.findById(1L))
@@ -279,14 +283,14 @@ class ShipmentServiceImplTest {
                 service.changeStatus(
                         1L,
                         new UpdateShipmentRStatusRequest(
-                                ShipmentState.EN_RUTA,
+                                ShipmentState.EN_TRANSITO,
                                 "Santiago",
                                 "En tránsito"
                         )
                 );
 
         assertEquals(
-                ShipmentState.EN_RUTA,
+                ShipmentState.EN_TRANSITO,
                 result.status()
         );
     }
@@ -298,7 +302,7 @@ class ShipmentServiceImplTest {
                 Shipment.builder()
                         .id(1L)
                         .destinationAddress("Destino")
-                        .status(ShipmentState.CREADO)
+                        .status(ShipmentState.LISTO_PARA_RETIRO)
                         .build();
 
         when(shipmentRepository.findById(1L))

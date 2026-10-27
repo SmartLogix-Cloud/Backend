@@ -23,7 +23,7 @@ class ShipmentControllerTest {
                 null,
                 null,
                 "ENV-001",
-                ShipmentState.CREADO,
+                ShipmentState.LISTO_PARA_RETIRO,
                 "Direccion",
                 "Puente Alto",
                 "RM",
@@ -138,12 +138,12 @@ class ShipmentControllerTest {
         ShipmentController controller =
                 new ShipmentController(service);
 
-        when(service.findByStatus(ShipmentState.CREADO))
+        when(service.findByStatus(ShipmentState.LISTO_PARA_RETIRO))
                 .thenReturn(List.of());
 
-        controller.list(ShipmentState.CREADO);
+        controller.list(ShipmentState.LISTO_PARA_RETIRO);
 
-        verify(service).findByStatus(ShipmentState.CREADO);
+        verify(service).findByStatus(ShipmentState.LISTO_PARA_RETIRO);
     }
 
     @Test
@@ -191,7 +191,7 @@ class ShipmentControllerTest {
 
         UpdateShipmentRStatusRequest request =
                 new UpdateShipmentRStatusRequest(
-                        ShipmentState.EN_RUTA,
+                        ShipmentState.EN_TRANSITO,
                         "Santiago",
                         "En camino"
                 );

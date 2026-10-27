@@ -13,6 +13,7 @@ volumes:
   pg-shipping-data:
   pg-user-data:
   pg-auth-data:
+  rabbitmq-data:
 
 services:
   # ===========================================================
@@ -115,6 +116,49 @@ services:
       - "traefik.http.services.bff.loadbalancer.server.port=3000"
 
   # ===========================================================
+  # Capa de mensajeria - RabbitMQ (broker de eventos)
+  # ===========================================================
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: smartlogix-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      # UI de administracion (solo loopback, para demo/screenshots)
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Microservicio administrador de RabbitMQ (crea/elimina colas, exchanges, bindings)
+  ms-broker-admin:
+    build:
+      context: ./backend/ms-broker-admin
+    container_name: smartlogix-ms-broker-admin
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8080
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      SENTRY_DSN: ${MS_BROKER_ADMIN_DSN:-}
+    depends_on:
+      - rabbitmq
+    ports:
+      # API REST de administracion (solo loopback, para demo)
+      - "127.0.0.1:8095:8080"
+    networks:
+      - internal
+
+  # ===========================================================
   # Capa de negocio - Microservicios Spring Boot
   # ===========================================================
   ms-inventory:
@@ -145,8 +189,12 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PEDIDO_PASSWORD}
       SENTRY_DSN: ${MS_ORDER_DSN:-}
       MS_INVENTORY_URL: http://ms-inventory:8080
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     depends_on:
       - db-order
+      - rabbitmq
     networks:
       - internal
 
@@ -161,8 +209,12 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_ENVIO_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_ENVIO_PASSWORD}
       SENTRY_DSN: ${MS_SHIPPING_DSN:-}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     depends_on:
       - db-shipping
+      - rabbitmq
     networks:
       - internal
 

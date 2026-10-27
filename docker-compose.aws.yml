@@ -1,0 +1,210 @@
+name: smartlogix
+
+# ===========================================================================
+# Despliegue AWS EC2 - SmartLogix (Evaluacion Cloud Native I)
+# ---------------------------------------------------------------------------
+# Arquitectura destino:
+#   Frontend (MSAL) -> AWS API Gateway (JWT authorizer Entra) -> EC2:3000 (BFF)
+#   BFF (valida JWT de Entra) -> 4 microservicios Spring Boot -> 4 Postgres
+#
+# Diferencias vs docker-compose.yml (local):
+#   - SIN Traefik  (el ingress lo hace AWS API Gateway)
+#   - SIN frontend (se sirve aparte / local, apuntando al Invoke URL)
+#   - SIN api-gateway KrakenD (lo reemplaza AWS API Gateway)
+#   - SIN ms-auth / db-auth (la autenticacion la provee Microsoft Entra ID)
+#   - El BFF se publica en 0.0.0.0:3000 (unico puerto expuesto de la EC2)
+# ===========================================================================
+
+networks:
+  web:
+    name: smartlogix_web
+  internal:
+    name: smartlogix_internal
+    internal: true
+
+volumes:
+  pg-inventory-data:
+  pg-order-data:
+  pg-shipping-data:
+  pg-user-data:
+
+services:
+  # ===========================================================
+  # Capa de adaptacion - BFF Node.js 20 (valida JWT de Entra)
+  # Unico servicio expuesto: AWS API Gateway lo consume por :3000
+  # ===========================================================
+  bff:
+    build:
+      context: ./backend/bff
+    container_name: smartlogix-bff
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      MS_INVENTORY_URL: http://ms-inventory:8080
+      MS_ORDER_URL: http://ms-order:8080
+      MS_SHIPPING_URL: http://ms-shipping:8080
+      MS_USER_URL: http://ms-user:8080
+      # --- Microsoft Entra ID (validacion de JWT: firma/issuer/audience/exp) ---
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_API_AUDIENCE: ${AZURE_API_AUDIENCE}
+      AZURE_ISSUER: ${AZURE_ISSUER}
+      AZURE_JWKS_URI: ${AZURE_JWKS_URI}
+      BFF_GLITCHTIP_DSN: ${BFF_GLITCHTIP_DSN:-}
+    depends_on:
+      - ms-inventory
+      - ms-order
+      - ms-shipping
+      - ms-user
+    ports:
+      - "3000:3000"
+    networks:
+      - web        # salida a internet: descarga la JWKS de login.microsoftonline.com
+      - internal   # acceso privado a los microservicios
+
+  # ===========================================================
+  # Capa de negocio - Microservicios Spring Boot (red privada)
+  # ===========================================================
+  ms-inventory:
+    build:
+      context: ./backend/ms-inventory
+    container_name: smartlogix-ms-inventory
+    restart: unless-stopped
+    mem_limit: 1400m   # capa el heap: MaxRAMPercentage=75 -> ~1GB por JVM (evita OOM del host)
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-inventory:5432/${POSTGRES_INVENTARIO_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_INVENTARIO_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_INVENTARIO_PASSWORD}
+      SENTRY_DSN: ${MS_INVENTORY_DSN:-}
+    depends_on:
+      - db-inventory
+    networks:
+      - internal
+
+  ms-order:
+    build:
+      context: ./backend/ms-order
+    container_name: smartlogix-ms-order
+    restart: unless-stopped
+    mem_limit: 1400m   # capa el heap: MaxRAMPercentage=75 -> ~1GB por JVM (evita OOM del host)
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-order:5432/${POSTGRES_PEDIDO_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_PEDIDO_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PEDIDO_PASSWORD}
+      SENTRY_DSN: ${MS_ORDER_DSN:-}
+      MS_INVENTORY_URL: http://ms-inventory:8080
+    depends_on:
+      - db-order
+    networks:
+      - internal
+
+  ms-shipping:
+    build:
+      context: ./backend/ms-shipping
+    container_name: smartlogix-ms-shipping
+    restart: unless-stopped
+    mem_limit: 1400m   # capa el heap: MaxRAMPercentage=75 -> ~1GB por JVM (evita OOM del host)
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-shipping:5432/${POSTGRES_ENVIO_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_ENVIO_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_ENVIO_PASSWORD}
+      SENTRY_DSN: ${MS_SHIPPING_DSN:-}
+    depends_on:
+      - db-shipping
+    networks:
+      - internal
+
+  ms-user:
+    build:
+      context: ./backend/ms-user
+    container_name: smartlogix-ms-user
+    restart: unless-stopped
+    mem_limit: 1400m   # capa el heap: MaxRAMPercentage=75 -> ~1GB por JVM (evita OOM del host)
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-user:5432/${POSTGRES_USUARIO_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USUARIO_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_USUARIO_PASSWORD}
+      SENTRY_DSN: ${MS_USER_DSN:-}
+    depends_on:
+      - db-user
+    networks:
+      - internal
+
+  # ===========================================================
+  # Capa de datos - PostgreSQL 16 (DB-per-service, red privada)
+  # ===========================================================
+  db-inventory:
+    image: postgres:16-alpine
+    container_name: smartlogix-db-inventory
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_INVENTARIO_DB}
+      POSTGRES_USER: ${POSTGRES_INVENTARIO_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_INVENTARIO_PASSWORD}
+    volumes:
+      - pg-inventory-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_INVENTARIO_USER} -d ${POSTGRES_INVENTARIO_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-order:
+    image: postgres:16-alpine
+    container_name: smartlogix-db-order
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_PEDIDO_DB}
+      POSTGRES_USER: ${POSTGRES_PEDIDO_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PEDIDO_PASSWORD}
+    volumes:
+      - pg-order-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_PEDIDO_USER} -d ${POSTGRES_PEDIDO_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-shipping:
+    image: postgres:16-alpine
+    container_name: smartlogix-db-shipping
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_ENVIO_DB}
+      POSTGRES_USER: ${POSTGRES_ENVIO_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ENVIO_PASSWORD}
+    volumes:
+      - pg-shipping-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ENVIO_USER} -d ${POSTGRES_ENVIO_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-user:
+    image: postgres:16-alpine
+    container_name: smartlogix-db-user
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_USUARIO_DB}
+      POSTGRES_USER: ${POSTGRES_USUARIO_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_USUARIO_PASSWORD}
+    volumes:
+      - pg-user-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USUARIO_USER} -d ${POSTGRES_USUARIO_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

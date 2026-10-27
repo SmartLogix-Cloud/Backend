@@ -14,17 +14,29 @@ import inventoryRouter from "./routes/inventory.js";
 import demoRouter from "./routes/demo.js";
 import proxyRouter from "./routes/proxy.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
+import { requireAuth, authorizeResource, requireRole } from "./middleware/auth.js";
 
 const app = express();
 
 app.use(morgan("combined"));
 app.use(express.json());
 
-// Documentacion OpenAPI / Swagger UI (antes del proxy para que no se redirija).
+// Rutas públicas: health (probes) y documentación. NO requieren token.
+app.use(healthRouter);
 app.use(docsRouter);
 
-// Endpoints propios del BFF (compuestos + health) van antes del proxy.
-app.use(healthRouter);
+// A partir de aquí, TODO exige un JWT válido de Entra (firma/issuer/audience/exp).
+app.use(requireAuth);
+
+// Autorización por rol según el recurso y el método (Read/Write).
+app.use("/inventory", authorizeResource("Inventory"));
+app.use("/orders", authorizeResource("Orders"));
+app.use("/shipments", authorizeResource("Shipments"));
+app.use("/users", authorizeResource("Users"));
+app.use("/checkout", requireRole("Orders.Write"));
+app.use("/dashboard", requireRole("Orders.Read", "Orders.Write"));
+
+// Endpoints propios del BFF (compuestos) van antes del proxy.
 app.use(checkoutRouter);
 app.use(ordersRouter);
 app.use(dashboardRouter);
@@ -47,6 +59,6 @@ app.listen(env.PORT, "0.0.0.0", () => {
   console.log(`  -> order:     ${env.MS_ORDER_URL}`);
   console.log(`  -> shipping:  ${env.MS_SHIPPING_URL}`);
   console.log(`  -> user:      ${env.MS_USER_URL}`);
-  console.log(`  -> auth:      ${env.MS_AUTH_URL}`);
+  console.log(`  -> auth:      Microsoft Entra ID (issuer ${env.AZURE_ISSUER || "sin configurar"})`);
   console.log(`  -> docs:      http://localhost:${env.PORT}/docs`);
 });

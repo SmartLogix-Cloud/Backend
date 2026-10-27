@@ -1,9 +1,11 @@
 package cl.smartlogix.shipping.model;
 
 public enum ShipmentState {
-    CREADO,
-    ASIGNADO,
-    EN_RUTA,
+    LISTO_PARA_RETIRO,
+    RETIRADO,
+    EN_TRANSITO,
     ENTREGADO,
-    INCIDENCIA
+    PERDIDO,
+    RETRASADO,
+    ENTREGA_FALLIDA
 }

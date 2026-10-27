@@ -5,6 +5,7 @@ import cl.smartlogix.shipping.dto.AssingCarierRequest;
 import cl.smartlogix.shipping.dto.CreateShipmentRequest;
 import cl.smartlogix.shipping.dto.ShipmentDto;
 import cl.smartlogix.shipping.dto.ShipmentTrackingDto;
+import cl.smartlogix.shipping.messaging.ShipmentEventsPublisher;
 import cl.smartlogix.shipping.model.Shipment;
 import cl.smartlogix.shipping.model.ShipmentTracking;
 import cl.smartlogix.shipping.model.ShipmentState;
@@ -13,6 +14,7 @@ import cl.smartlogix.shipping.repository.ShipmentRepository;
 import cl.smartlogix.shipping.repository.ShipmentTrackingRepository;
 import cl.smartlogix.shipping.repository.CarrierRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional
 public class ShipmentServiceImpl implements ShipmentService {
@@ -35,22 +38,27 @@ public class ShipmentServiceImpl implements ShipmentService {
 
     // Máquina de estados del envío
     private static final Map<ShipmentState, Set<ShipmentState>> TRANSITIONS = Map.of(
-        ShipmentState.CREADO,     Set.of(ShipmentState.ASIGNADO, ShipmentState.INCIDENCIA),
-        ShipmentState.ASIGNADO,   Set.of(ShipmentState.EN_RUTA, ShipmentState.INCIDENCIA),
-        ShipmentState.EN_RUTA,    Set.of(ShipmentState.ENTREGADO, ShipmentState.INCIDENCIA),
-        ShipmentState.INCIDENCIA, Set.of(ShipmentState.EN_RUTA, ShipmentState.ENTREGADO),
-        ShipmentState.ENTREGADO,  Set.of()
+        ShipmentState.LISTO_PARA_RETIRO, Set.of(ShipmentState.RETIRADO, ShipmentState.PERDIDO),
+        ShipmentState.RETIRADO,          Set.of(ShipmentState.EN_TRANSITO, ShipmentState.PERDIDO),
+        ShipmentState.EN_TRANSITO,       Set.of(ShipmentState.ENTREGADO, ShipmentState.RETRASADO,
+                                                ShipmentState.ENTREGA_FALLIDA, ShipmentState.PERDIDO),
+        ShipmentState.RETRASADO,         Set.of(ShipmentState.EN_TRANSITO, ShipmentState.ENTREGADO,
+                                                ShipmentState.ENTREGA_FALLIDA, ShipmentState.PERDIDO),
+        ShipmentState.ENTREGA_FALLIDA,   Set.of(ShipmentState.EN_TRANSITO, ShipmentState.PERDIDO),
+        ShipmentState.ENTREGADO,         Set.of(),
+        ShipmentState.PERDIDO,           Set.of()
     );
 
     private final ShipmentRepository shipmentRepository;
     private final CarrierRepository carrierRepository;
     private final ShipmentTrackingRepository trackingRepository;
+    private final ShipmentEventsPublisher eventsPublisher;
 
     @Override
     public ShipmentDto create(CreateShipmentRequest req) {
         Shipment shipment = Shipment.builder()
             .orderId(req.orderId())
-            .status(ShipmentState.CREADO)
+            .status(ShipmentState.LISTO_PARA_RETIRO)
             .destinationAddress(req.destinationAddress())
             .district(req.district())
             .region(req.region())
@@ -58,8 +66,8 @@ public class ShipmentServiceImpl implements ShipmentService {
             .trackingNumber(generateTracking())
             .build();
         shipment.addTracking(ShipmentTracking.builder()
-            .status(ShipmentState.CREADO)
-            .comment("Envío creado")
+            .status(ShipmentState.LISTO_PARA_RETIRO)
+            .comment("Envío creado, listo para retiro")
             .build());
         return ShipmentDto.from(shipmentRepository.save(shipment));
     }
@@ -106,9 +114,9 @@ public class ShipmentServiceImpl implements ShipmentService {
     @Override
     public ShipmentDto assignCarrier(Long shipmentId, AssingCarierRequest req) {
         Shipment shipment = find(shipmentId);
-        if (shipment.getStatus() != ShipmentState.CREADO) {
+        if (shipment.getStatus() != ShipmentState.LISTO_PARA_RETIRO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "Solo se puede asignar transportista en estado CREADO (actual: " + shipment.getStatus() + ")");
+                "Solo se puede asignar transportista en estado LISTO_PARA_RETIRO (actual: " + shipment.getStatus() + ")");
         }
         Carrier c = carrierRepository.findById(req.carrierId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -118,9 +126,8 @@ public class ShipmentServiceImpl implements ShipmentService {
         }
 
         shipment.setCarrier(c);
-        shipment.setStatus(ShipmentState.ASIGNADO);
         shipment.addTracking(ShipmentTracking.builder()
-            .status(ShipmentState.ASIGNADO)
+            .status(ShipmentState.LISTO_PARA_RETIRO)
             .comment("Transportista asignado: " + c.getName())
             .build());
         return ShipmentDto.from(shipmentRepository.save(shipment));
@@ -146,7 +153,52 @@ public class ShipmentServiceImpl implements ShipmentService {
             .location(req.location())
             .comment(req.comment())
             .build());
-        return ShipmentDto.from(shipmentRepository.save(shipment));
+        Shipment saved = shipmentRepository.save(shipment);
+
+        // Publicación de hitos hacia ms-order.
+        if (next == ShipmentState.ENTREGADO) {
+            eventsPublisher.publishDelivered(saved.getOrderId(), saved.getTrackingNumber());
+        } else if (next == ShipmentState.PERDIDO) {
+            eventsPublisher.publishLost(saved.getOrderId(), saved.getTrackingNumber(), req.comment());
+        }
+
+        return ShipmentDto.from(saved);
+    }
+
+    @Override
+    public void onOrderReadyForShipment(Long orderId, String orderCode) {
+        if (!shipmentRepository.findByOrderId(orderId).isEmpty()) {
+            log.info("order.ready-for-shipment ignorado: el pedido {} ya tiene envío", orderId);
+            return; // idempotente
+        }
+        Shipment shipment = Shipment.builder()
+            .orderId(orderId)
+            .status(ShipmentState.LISTO_PARA_RETIRO)
+            .destinationAddress("Pedido " + orderCode + " — dirección por confirmar")
+            .trackingNumber(generateTracking())
+            .build();
+        shipment.addTracking(ShipmentTracking.builder()
+            .status(ShipmentState.LISTO_PARA_RETIRO)
+            .comment("Envío generado automáticamente desde el pedido " + orderCode)
+            .build());
+        shipmentRepository.save(shipment);
+        log.info("Envío creado automáticamente para el pedido {}", orderId);
+    }
+
+    @Override
+    public void onOrderCancelled(Long orderId) {
+        List<Shipment> shipments = shipmentRepository.findByOrderId(orderId);
+        for (Shipment shipment : shipments) {
+            if (shipment.getStatus() == ShipmentState.LISTO_PARA_RETIRO) {
+                shipment.addTracking(ShipmentTracking.builder()
+                    .status(ShipmentState.LISTO_PARA_RETIRO)
+                    .comment("Pedido cancelado: no despachar")
+                    .build());
+                shipmentRepository.save(shipment);
+                log.info("Envío {} marcado como no despachar por cancelación del pedido {}",
+                    shipment.getId(), orderId);
+            }
+        }
     }
 
     private Shipment find(Long id) {

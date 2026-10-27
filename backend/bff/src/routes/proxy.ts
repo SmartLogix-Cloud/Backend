@@ -60,14 +60,7 @@ router.use(
   })
 );
 
-router.use(
-  "/auth",
-  createProxyMiddleware({
-    target: env.MS_AUTH_URL,
-    changeOrigin: true,
-    pathRewrite: (_path, req) => req.originalUrl,
-    on: { proxyReq: restreamBody },
-  })
-);
+// Nota: /auth se eliminó. La autenticación ahora la provee Microsoft Entra ID
+// (IDaaS) vía MSAL en el frontend; el BFF ya no delega login a ms-auth.
 
 export default router;

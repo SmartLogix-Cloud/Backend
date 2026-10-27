@@ -15,4 +15,12 @@ public interface OrderService {
     List<OrderDto> findByStatus(OrderStatus status);
     List<OrderDto> findByCustomer(String customerId);
     OrderDto changeStatus(Long id, UpdateOrderState req);
+
+    // --- Reacciones a eventos de ms-shipping (consumidas via RabbitMQ) ---
+
+    /** El envio del pedido fue entregado: el pedido pasa a FINALIZADO (idempotente). */
+    void onShipmentDelivered(Long orderId);
+
+    /** El envio del pedido se perdio: el pedido pasa a INCIDENCIA (idempotente). */
+    void onShipmentLost(Long orderId, String reason);
 }

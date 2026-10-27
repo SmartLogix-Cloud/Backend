@@ -20,7 +20,7 @@ public class StandardOrderFactory extends OrderFactory {
         return Order.builder()
             .code(code)
             .type(OrderType.ESTANDAR)
-            .status(OrderStatus.PENDIENTE)
+            .status(OrderStatus.PENDIENTE_PREPARACION)
             .customerId(req.customerId())
             .marketplaceId(req.marketplaceId())
             .build();

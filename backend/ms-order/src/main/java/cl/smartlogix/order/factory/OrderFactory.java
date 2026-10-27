@@ -61,7 +61,7 @@ public abstract class OrderFactory {
 
         order.addHistory(OrderHistory.builder()
             .previousStatus(null)
-            .newStatus(OrderStatus.PENDIENTE)
+            .newStatus(OrderStatus.PENDIENTE_PREPARACION)
             .reason("Pedido creado (" + type() + ")")
             .build());
 
