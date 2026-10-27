@@ -36,29 +36,6 @@ services:
       - web
 
   # ===========================================================
-  # Capa de presentacion - Frontend React 19
-  # ===========================================================
-  frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_BASE: ${FRONTEND_API_BASE:-http://localhost:8090/api}
-        VITE_GLITCHTIP_DSN: ${VITE_GLITCHTIP_DSN:-}
-    container_name: smartlogix-frontend
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:5173:80"
-    networks:
-      - web
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=smartlogix_web"
-      - "traefik.http.routers.frontend.rule=Host(`app.smartlogix.localhost`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
-      - "traefik.http.routers.frontend.middlewares=secure-headers@file"
-
-  # ===========================================================
   # Capa de seguridad - API Gateway Krakend
   # ===========================================================
   api-gateway:
