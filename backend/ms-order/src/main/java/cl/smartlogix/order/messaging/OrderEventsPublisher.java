@@ -43,10 +43,11 @@ public class OrderEventsPublisher {
     private void send(String routingKey, Object event) {
         try {
             String json = objectMapper.writeValueAsString(event);
-            rabbitTemplate.convertAndSend(RabbitTopologyConfig.LOGISTICS_EXCHANGE, routingKey, json);
-            log.info("Evento publicado [{}]: {}", routingKey, json);
+            // Los comandos del dominio Pedido viajan por el exchange DIRECT (enrutamiento exacto).
+            rabbitTemplate.convertAndSend(RabbitTopologyConfig.COMMANDS_EXCHANGE, routingKey, json);
+            log.info("Comando publicado [{}]: {}", routingKey, json);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("No se pudo serializar el evento " + routingKey, e);
+            throw new IllegalStateException("No se pudo serializar el comando " + routingKey, e);
         }
     }
 }

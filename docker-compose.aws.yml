@@ -13,6 +13,10 @@ name: smartlogix
 #   - SIN api-gateway KrakenD (lo reemplaza AWS API Gateway)
 #   - SIN ms-auth / db-auth (la autenticacion la provee Microsoft Entra ID)
 #   - El BFF se publica en 0.0.0.0:3000 (unico puerto expuesto de la EC2)
+#   - CON cluster RabbitMQ de 2 nodos (rabbit1 + rabbit2) + ms-broker-admin (EP2)
+#
+# NOTA EP2: para ver el Management UI del cluster desde fuera hay que abrir el
+# puerto 15672 en el Security Group de la EC2 (http://<IP-publica>:15672).
 # ===========================================================================
 
 networks:
@@ -27,6 +31,8 @@ volumes:
   pg-order-data:
   pg-shipping-data:
   pg-user-data:
+  rabbit1-data:
+  rabbit2-data:
 
 services:
   # ===========================================================
@@ -45,6 +51,7 @@ services:
       MS_ORDER_URL: http://ms-order:8080
       MS_SHIPPING_URL: http://ms-shipping:8080
       MS_USER_URL: http://ms-user:8080
+      MS_BROKER_ADMIN_URL: http://ms-broker-admin:8080
       # --- Microsoft Entra ID (validacion de JWT: firma/issuer/audience/exp) ---
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       AZURE_API_AUDIENCE: ${AZURE_API_AUDIENCE}
@@ -56,11 +63,80 @@ services:
       - ms-order
       - ms-shipping
       - ms-user
+      - ms-broker-admin
     ports:
       - "3000:3000"
     networks:
       - web        # salida a internet: descarga la JWKS de login.microsoftonline.com
       - internal   # acceso privado a los microservicios
+
+  # ===========================================================
+  # Capa de mensajeria - Cluster RabbitMQ de 2 nodos (EP2)
+  # ===========================================================
+  rabbit1:
+    image: rabbitmq:4-management-alpine
+    container_name: smartlogix-rabbit1
+    hostname: rabbit1
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
+    volumes:
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbit1-data:/var/lib/rabbitmq
+    ports:
+      # Management UI del nodo 1 (abrir puerto 15672 en el Security Group para la demo)
+      - "15672:15672"
+    networks:
+      - internal
+      - web   # necesaria para publicar el Management UI (internal: true no publica puertos)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbit2:
+    image: rabbitmq:4-management-alpine
+    container_name: smartlogix-rabbit2
+    hostname: rabbit2
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
+    volumes:
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbit2-data:/var/lib/rabbitmq
+    depends_on:
+      - rabbit1
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Microservicio administrador de RabbitMQ (crea/elimina colas, exchanges, bindings)
+  ms-broker-admin:
+    build:
+      context: ./backend/ms-broker-admin
+    container_name: smartlogix-ms-broker-admin
+    restart: unless-stopped
+    mem_limit: 700m
+    environment:
+      SERVER_PORT: 8080
+      SPRING_RABBITMQ_ADDRESSES: rabbit1:5672,rabbit2:5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      SENTRY_DSN: ${MS_BROKER_ADMIN_DSN:-}
+    depends_on:
+      - rabbit1
+      - rabbit2
+    networks:
+      - internal
 
   # ===========================================================
   # Capa de negocio - Microservicios Spring Boot (red privada)
@@ -95,8 +171,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PEDIDO_PASSWORD}
       SENTRY_DSN: ${MS_ORDER_DSN:-}
       MS_INVENTORY_URL: http://ms-inventory:8080
+      SPRING_RABBITMQ_ADDRESSES: rabbit1:5672,rabbit2:5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     depends_on:
       - db-order
+      - rabbit1
+      - rabbit2
     networks:
       - internal
 
@@ -112,8 +193,13 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_ENVIO_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_ENVIO_PASSWORD}
       SENTRY_DSN: ${MS_SHIPPING_DSN:-}
+      SPRING_RABBITMQ_ADDRESSES: rabbit1:5672,rabbit2:5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     depends_on:
       - db-shipping
+      - rabbit1
+      - rabbit2
     networks:
       - internal
 

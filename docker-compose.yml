@@ -13,7 +13,8 @@ volumes:
   pg-shipping-data:
   pg-user-data:
   pg-auth-data:
-  rabbitmq-data:
+  rabbit1-data:
+  rabbit2-data:
 
 services:
   # ===========================================================
@@ -75,6 +76,7 @@ services:
       MS_SHIPPING_URL: http://ms-shipping:8080
       MS_USER_URL: http://ms-user:8080
       MS_AUTH_URL: http://ms-auth:8081
+      MS_BROKER_ADMIN_URL: http://ms-broker-admin:8080
       BFF_GLITCHTIP_DSN: ${BFF_GLITCHTIP_DSN:-}
     depends_on:
       - ms-inventory
@@ -82,6 +84,7 @@ services:
       - ms-shipping
       - ms-user
       - ms-auth
+      - ms-broker-admin
     networks:
       - internal
       - web
@@ -93,22 +96,54 @@ services:
       - "traefik.http.services.bff.loadbalancer.server.port=3000"
 
   # ===========================================================
-  # Capa de mensajeria - RabbitMQ (broker de eventos)
+  # Capa de mensajeria - Cluster RabbitMQ de 2 nodos (EP2)
+  # rabbit1 y rabbit2 comparten el mismo Erlang cookie y forman un cluster
+  # (descubrimiento declarativo en infra/rabbitmq/rabbitmq.conf).
   # ===========================================================
-  rabbitmq:
+  rabbit1:
     image: rabbitmq:4-management-alpine
-    container_name: smartlogix-rabbitmq
+    container_name: smartlogix-rabbit1
+    hostname: rabbit1
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
-    ports:
-      # UI de administracion (solo loopback, para demo/screenshots)
-      - "127.0.0.1:15672:15672"
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbit1-data:/var/lib/rabbitmq
+    ports:
+      # UI de administracion del nodo 1 (solo loopback, para demo/screenshots)
+      - "127.0.0.1:15672:15672"
     networks:
       - internal
+      - web   # necesaria para publicar el Management UI al host (internal: true no publica)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbit2:
+    image: rabbitmq:4-management-alpine
+    container_name: smartlogix-rabbit2
+    hostname: rabbit2
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
+    volumes:
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbit2-data:/var/lib/rabbitmq
+    ports:
+      # UI de administracion del nodo 2 (otro puerto para verlo en paralelo)
+      - "127.0.0.1:15673:15672"
+    depends_on:
+      - rabbit1
+    networks:
+      - internal
+      - web   # necesaria para publicar el Management UI al host (internal: true no publica)
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -123,12 +158,14 @@ services:
     restart: unless-stopped
     environment:
       SERVER_PORT: 8080
-      SPRING_RABBITMQ_HOST: rabbitmq
+      # Se conecta a ambos nodos del cluster (alta disponibilidad)
+      SPRING_RABBITMQ_ADDRESSES: rabbit1:5672,rabbit2:5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       SENTRY_DSN: ${MS_BROKER_ADMIN_DSN:-}
     depends_on:
-      - rabbitmq
+      - rabbit1
+      - rabbit2
     ports:
       # API REST de administracion (solo loopback, para demo)
       - "127.0.0.1:8095:8080"
@@ -166,12 +203,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PEDIDO_PASSWORD}
       SENTRY_DSN: ${MS_ORDER_DSN:-}
       MS_INVENTORY_URL: http://ms-inventory:8080
-      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_ADDRESSES: rabbit1:5672,rabbit2:5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     depends_on:
       - db-order
-      - rabbitmq
+      - rabbit1
+      - rabbit2
     networks:
       - internal
 
@@ -186,12 +224,13 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_ENVIO_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_ENVIO_PASSWORD}
       SENTRY_DSN: ${MS_SHIPPING_DSN:-}
-      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_ADDRESSES: rabbit1:5672,rabbit2:5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     depends_on:
       - db-shipping
-      - rabbitmq
+      - rabbit1
+      - rabbit2
     networks:
       - internal
 
