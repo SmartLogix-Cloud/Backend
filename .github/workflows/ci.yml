@@ -2,7 +2,7 @@ name: CI
 
 # Pipeline de integración continua de SmartLogix (EFT).
 # Construye y prueba todos los componentes del monorepo:
-#   - 5 microservicios Spring Boot (Java 25 + Gradle) con cobertura JaCoCo
+#   - 7 microservicios Spring Boot (Java 25 + Gradle) con cobertura JaCoCo
 #   - BFF (Node 20 + TypeScript): typecheck
 #   - Frontend (React 19 + Vite): lint + build
 #   - API Gateway (KrakenD): validación de la configuración
@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [ms-auth, ms-inventory, ms-order, ms-shipping, ms-user]
+        service: [ms-auth, ms-inventory, ms-order, ms-shipping, ms-user, ms-analytics, ms-broker-admin]
     defaults:
       run:
         working-directory: backend/${{ matrix.service }}
