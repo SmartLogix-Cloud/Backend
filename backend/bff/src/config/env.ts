@@ -4,6 +4,7 @@ export const env = {
   MS_ORDER_URL: process.env.MS_ORDER_URL || "http://ms-order:8080",
   MS_SHIPPING_URL: process.env.MS_SHIPPING_URL || "http://ms-shipping:8080",
   MS_USER_URL: process.env.MS_USER_URL || "http://ms-user:8080",
+  MS_ANALYTICS_URL: process.env.MS_ANALYTICS_URL || "http://ms-analytics:8080",
   HTTP_TIMEOUT_MS: Number(process.env.HTTP_TIMEOUT_MS) || 5000,
   // Circuit Breaker: fallos consecutivos para abrir y ventana antes de reintentar.
   CB_FAILURE_THRESHOLD: Number(process.env.CB_FAILURE_THRESHOLD) || 5,

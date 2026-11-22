@@ -13,11 +13,19 @@ name: smartlogix
 #   - SIN api-gateway KrakenD (lo reemplaza AWS API Gateway)
 #   - SIN ms-auth / db-auth (la autenticacion la provee Microsoft Entra ID)
 #   - El BFF se publica en 0.0.0.0:3000 (unico puerto expuesto de la EC2)
+#   - Mensajeria EXTERNA (EP5/EP6), en otras EC2 de la misma VPC:
+#       EC2-mq1: rabbit1 + Kafka (3 Zookeeper + 3 brokers + Kafka UI)
+#       EC2-mq2: rabbit2 (cluster RabbitMQ de 2 nodos)
+#     Los MS que usan mensajeria salen por la red "messaging" hacia las IP privadas
+#     definidas en RABBITMQ_ADDRESSES y KAFKA_BOOTSTRAP_SERVERS (.env).
 # ===========================================================================
 
 networks:
   web:
     name: smartlogix_web
+  # Salida hacia las EC2 de mensajeria (RabbitMQ / Kafka) por IP privada
+  messaging:
+    name: smartlogix_messaging
   internal:
     name: smartlogix_internal
     internal: true
@@ -45,6 +53,7 @@ services:
       MS_ORDER_URL: http://ms-order:8080
       MS_SHIPPING_URL: http://ms-shipping:8080
       MS_USER_URL: http://ms-user:8080
+      MS_ANALYTICS_URL: http://ms-analytics:8080
       # --- Microsoft Entra ID (validacion de JWT: firma/issuer/audience/exp) ---
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       AZURE_API_AUDIENCE: ${AZURE_API_AUDIENCE}
@@ -56,6 +65,7 @@ services:
       - ms-order
       - ms-shipping
       - ms-user
+      - ms-analytics
     ports:
       - "3000:3000"
     networks:
@@ -95,10 +105,16 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PEDIDO_PASSWORD}
       SENTRY_DSN: ${MS_ORDER_DSN:-}
       MS_INVENTORY_URL: http://ms-inventory:8080
+      # Cluster RabbitMQ (2 nodos en EC2 distintas) y Kafka (3 brokers en EC2-mq1)
+      SPRING_RABBITMQ_ADDRESSES: ${RABBITMQ_ADDRESSES:?Definir RABBITMQ_ADDRESSES en .env}
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:?Definir KAFKA_BOOTSTRAP_SERVERS en .env}
     depends_on:
       - db-order
     networks:
       - internal
+      - messaging
 
   ms-shipping:
     build:
@@ -112,10 +128,50 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_ENVIO_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_ENVIO_PASSWORD}
       SENTRY_DSN: ${MS_SHIPPING_DSN:-}
+      SPRING_RABBITMQ_ADDRESSES: ${RABBITMQ_ADDRESSES:?Definir RABBITMQ_ADDRESSES en .env}
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:?Definir KAFKA_BOOTSTRAP_SERVERS en .env}
     depends_on:
       - db-shipping
     networks:
       - internal
+      - messaging
+
+  # Analitica en tiempo real: consume los topicos Kafka (sin base de datos)
+  ms-analytics:
+    build:
+      context: ./backend/ms-analytics
+    container_name: smartlogix-ms-analytics
+    restart: unless-stopped
+    mem_limit: 700m
+    environment:
+      SERVER_PORT: 8080
+      SENTRY_DSN: ${MS_ANALYTICS_DSN:-}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:?Definir KAFKA_BOOTSTRAP_SERVERS en .env}
+    networks:
+      - internal
+      - messaging
+
+  # Administrador de RabbitMQ (colas/exchanges/bindings) y Kafka (topicos/consumer groups).
+  # Solo accesible por loopback: usar tunel SSH (ssh -L 8095:localhost:8095 ec2-user@<IP>)
+  ms-broker-admin:
+    build:
+      context: ./backend/ms-broker-admin
+    container_name: smartlogix-ms-broker-admin
+    restart: unless-stopped
+    mem_limit: 700m
+    environment:
+      SERVER_PORT: 8080
+      SPRING_RABBITMQ_ADDRESSES: ${RABBITMQ_ADDRESSES:?Definir RABBITMQ_ADDRESSES en .env}
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:?Definir KAFKA_BOOTSTRAP_SERVERS en .env}
+      SENTRY_DSN: ${MS_BROKER_ADMIN_DSN:-}
+    ports:
+      - "127.0.0.1:8095:8080"
+    networks:
+      - messaging
 
   ms-user:
     build:

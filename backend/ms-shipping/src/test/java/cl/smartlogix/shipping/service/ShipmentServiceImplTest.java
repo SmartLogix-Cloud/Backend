@@ -44,7 +44,8 @@ class ShipmentServiceImplTest {
                 shipmentRepository,
                 carrierRepository,
                 trackingRepository,
-                eventsPublisher
+                eventsPublisher,
+                mock(cl.smartlogix.shipping.streaming.ShipmentEventProducer.class)
         );
     }
 

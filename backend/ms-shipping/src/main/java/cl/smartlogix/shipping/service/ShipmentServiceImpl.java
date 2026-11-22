@@ -13,6 +13,7 @@ import cl.smartlogix.shipping.model.Carrier;
 import cl.smartlogix.shipping.repository.ShipmentRepository;
 import cl.smartlogix.shipping.repository.ShipmentTrackingRepository;
 import cl.smartlogix.shipping.repository.CarrierRepository;
+import cl.smartlogix.shipping.streaming.ShipmentEventProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -53,6 +54,7 @@ public class ShipmentServiceImpl implements ShipmentService {
     private final CarrierRepository carrierRepository;
     private final ShipmentTrackingRepository trackingRepository;
     private final ShipmentEventsPublisher eventsPublisher;
+    private final ShipmentEventProducer streamProducer;
 
     @Override
     public ShipmentDto create(CreateShipmentRequest req) {
@@ -69,7 +71,9 @@ public class ShipmentServiceImpl implements ShipmentService {
             .status(ShipmentState.LISTO_PARA_RETIRO)
             .comment("Envío creado, listo para retiro")
             .build());
-        return ShipmentDto.from(shipmentRepository.save(shipment));
+        Shipment created = shipmentRepository.save(shipment);
+        streamProducer.publishCreated(created, "Envío creado, listo para retiro");
+        return ShipmentDto.from(created);
     }
 
     @Override
@@ -130,7 +134,9 @@ public class ShipmentServiceImpl implements ShipmentService {
             .status(ShipmentState.LISTO_PARA_RETIRO)
             .comment("Transportista asignado: " + c.getName())
             .build());
-        return ShipmentDto.from(shipmentRepository.save(shipment));
+        Shipment assigned = shipmentRepository.save(shipment);
+        streamProducer.publishCarrierAssigned(assigned);
+        return ShipmentDto.from(assigned);
     }
 
     @Override
@@ -155,7 +161,10 @@ public class ShipmentServiceImpl implements ShipmentService {
             .build());
         Shipment saved = shipmentRepository.save(shipment);
 
-        // Publicación de hitos hacia ms-order.
+        // Kafka: todo hito de seguimiento (streaming / analitica / proyeccion en ms-order).
+        streamProducer.publishStatusChanged(saved, current, req.location(), req.comment());
+
+        // RabbitMQ: solo los hitos que cambian la maquina de estados del pedido.
         if (next == ShipmentState.ENTREGADO) {
             eventsPublisher.publishDelivered(saved.getOrderId(), saved.getTrackingNumber());
         } else if (next == ShipmentState.PERDIDO) {
@@ -181,7 +190,9 @@ public class ShipmentServiceImpl implements ShipmentService {
             .status(ShipmentState.LISTO_PARA_RETIRO)
             .comment("Envío generado automáticamente desde el pedido " + orderCode)
             .build());
-        shipmentRepository.save(shipment);
+        Shipment created = shipmentRepository.save(shipment);
+        streamProducer.publishCreated(created != null ? created : shipment,
+            "Envío generado automáticamente desde el pedido " + orderCode);
         log.info("Envío creado automáticamente para el pedido {}", orderId);
     }
 

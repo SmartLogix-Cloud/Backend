@@ -1,5 +1,6 @@
 package cl.smartlogix.brokeradmin.controller;
 
+import cl.smartlogix.brokeradmin.kafka.KafkaAdminException;
 import org.springframework.amqp.AmqpException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +33,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+    }
+
+    /** Errores de administracion de Kafka con su estado HTTP (404, 409, 400, 504, 502). */
+    @ExceptionHandler(KafkaAdminException.class)
+    public ResponseEntity<Map<String, Object>> handleKafka(KafkaAdminException ex) {
+        return ResponseEntity.status(ex.getStatus())
+            .body(Map.of("error", String.valueOf(ex.getMessage())));
     }
 
     /** Fallos al interactuar con el broker -> 502 Bad Gateway. */

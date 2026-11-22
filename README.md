@@ -17,6 +17,11 @@
 | ms-user | [`backend/ms-user/README.md`](backend/ms-user/README.md) |
 | ms-auth | [`backend/ms-auth/README.md`](backend/ms-auth/README.md) |
 | Infra k8s | [`infra/k8s/README.md`](infra/k8s/README.md) |
+| **Streaming Kafka (EP5/EP6)**: eventos, consumer groups, DLT, admin, demo | [`docs/EP5-EP6-kafka-streaming.md`](docs/EP5-EP6-kafka-streaming.md) |
+| Kafka (3 Zookeeper + 3 brokers + Kafka UI) | [`infra/kafka/README.md`](infra/kafka/README.md) |
+| RabbitMQ (clúster de 2 nodos en 2 instancias) | [`infra/rabbitmq/README.md`](infra/rabbitmq/README.md) |
+| ms-analytics (analítica en tiempo real desde Kafka) | [`docs/EP5-EP6-kafka-streaming.md`](docs/EP5-EP6-kafka-streaming.md#2-flujo-de-eventos) |
+| ms-broker-admin (admin RabbitMQ + Kafka) | [`docs/EP5-EP6-kafka-streaming.md`](docs/EP5-EP6-kafka-streaming.md#6-administración-de-kafka-ms-broker-admin) |
 
 ---
 

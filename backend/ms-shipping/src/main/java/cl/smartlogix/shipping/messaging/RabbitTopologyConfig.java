@@ -3,6 +3,7 @@ package cl.smartlogix.shipping.messaging;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.ExchangeBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
@@ -46,9 +47,14 @@ public class RabbitTopologyConfig {
         return ExchangeBuilder.topicExchange(LOGISTICS_EXCHANGE).durable(true).build();
     }
 
+    /**
+     * Dead-letter exchange de tipo DIRECT: el dead-lettering reenvia cada mensaje
+     * fallido con su routing key exacta (x-dead-letter-routing-key), por lo que no
+     * necesita patrones. El exchange de negocio sigue siendo TOPIC.
+     */
     @Bean
-    TopicExchange deadLetterExchange() {
-        return ExchangeBuilder.topicExchange(DEAD_LETTER_EXCHANGE).durable(true).build();
+    DirectExchange deadLetterExchange() {
+        return ExchangeBuilder.directExchange(DEAD_LETTER_EXCHANGE).durable(true).build();
     }
 
     // ===================== Colas principales (con DLQ) =====================

@@ -1,0 +1,70 @@
+name: smartlogix-rabbitmq-local
+
+# ===========================================================================
+# SmartLogix - Cluster RabbitMQ de 2 nodos en UNA sola maquina (pruebas locales)
+# Misma configuracion de cluster que docker-compose.node.yml (multi-instancia).
+#
+#   rabbit1 -> AMQP localhost:5672  UI http://localhost:15672
+#   rabbit2 -> AMQP localhost:5673  UI http://localhost:15673
+#
+# Levantar:  docker compose -f docker-compose.cluster-local.yml up -d
+# Verificar: docker exec smartlogix-rabbit1 rabbitmqctl cluster_status
+# ===========================================================================
+
+x-rabbit-env: &rabbit-env
+  RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-smartlogix}
+  RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-smartlogix_dev_pass}
+  RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-setcookie ${RABBITMQ_ERLANG_COOKIE:-smartlogix-local-cookie}"
+  RABBITMQ_CTL_ERL_ARGS: "-setcookie ${RABBITMQ_ERLANG_COOKIE:-smartlogix-local-cookie}"
+
+x-rabbit-healthcheck: &rabbit-healthcheck
+  test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+  interval: 15s
+  timeout: 10s
+  retries: 10
+  start_period: 30s
+
+networks:
+  rabbit:
+    name: smartlogix_rabbit
+
+volumes:
+  rabbit1-data:
+  rabbit2-data:
+
+services:
+  rabbit1:
+    image: rabbitmq:4.1-management-alpine
+    hostname: rabbit1
+    container_name: smartlogix-rabbit1
+    restart: unless-stopped
+    environment:
+      <<: *rabbit-env
+      RABBITMQ_NODENAME: rabbit@rabbit1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbit1-data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/20-cluster.conf:ro
+    networks: [rabbit]
+    healthcheck: *rabbit-healthcheck
+
+  rabbit2:
+    image: rabbitmq:4.1-management-alpine
+    hostname: rabbit2
+    container_name: smartlogix-rabbit2
+    restart: unless-stopped
+    # Sin depends_on: ambos nodos deben arrancar en paralelo para que el
+    # peer discovery (classic_config) los encuentre y forme el cluster.
+    environment:
+      <<: *rabbit-env
+      RABBITMQ_NODENAME: rabbit@rabbit2
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - rabbit2-data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/20-cluster.conf:ro
+    networks: [rabbit]
+    healthcheck: *rabbit-healthcheck
