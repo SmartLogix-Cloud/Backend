@@ -35,16 +35,21 @@ docker exec smartlogix-rabbit2 rabbitmqctl start_app
 
 | Exchange | Tipo | Uso |
 |---|---|---|
-| `smartlogix.logistics` | **topic** | Eventos de negocio (`order.*`, `shipment.*`). |
-| `smartlogix.logistics.dlx` | **direct** | Dead-letter exchange: reenvía cada mensaje fallido a su DLQ por routing key exacta. |
+| `smartlogix.commands` | **direct** | Comandos de ms-order a ms-shipping (enrutamiento exacto por routing key). |
+| `smartlogix.events` | **topic** | Eventos de ms-shipping (`shipment.*`), enrutados por patrón. |
+| `smartlogix.dlx` | **direct** | Dead-letter exchange: reenvía cada mensaje fallido a su DLQ por routing key exacta. |
 
-| Cola | Routing key | DLQ |
-|---|---|---|
-| `shipping.order-ready.q` | `order.ready-for-shipment` | `shipping.order-ready.dlq` |
-| `shipping.order-cancelled.q` | `order.cancelled` | `shipping.order-cancelled.dlq` |
-| `order.shipment-delivered.q` | `shipment.delivered` | `order.shipment-delivered.dlq` |
-| `order.shipment-lost.q` | `shipment.lost` | `order.shipment-lost.dlq` |
+| Cola | Exchange / routing key | DLQ | Consumidor |
+|---|---|---|---|
+| `shipping.order-ready.q` | commands / `order.ready-for-shipment` | `shipping.order-ready.dlq` | ms-shipping (crea el envío) |
+| `shipping.order-cancelled.q` | commands / `order.cancelled` | `shipping.order-cancelled.dlq` | ms-shipping |
+| `order.shipment-delivered.q` | events / `shipment.delivered` | `order.shipment-delivered.dlq` | ms-order (pedido FINALIZADO) |
+| `order.shipment-lost.q` | events / `shipment.lost` | `order.shipment-lost.dlq` | ms-order (pedido INCIDENCIA) |
+| `order.customer-notify.q` | events / `shipment.#` | `order.customer-notify.dlq` | ms-order (notificación al cliente) |
+| `shipping.audit.q` | events / `#` | `shipping.audit.dlq` | ms-shipping (auditoría) |
 
-> Si un broker local ya tenía `smartlogix.logistics.dlx` declarado como `topic` (versión anterior), hay que borrarlo (o el volumen) antes de arrancar: RabbitMQ no permite redeclarar un exchange con otro tipo.
+Las colas principales tienen TTL de 5 minutos y un máximo de 10.000 mensajes (`drop-head`): lo que caduca o se descarta pasa a su DLQ. Cada DLQ tiene un listener que registra el mensaje fallido en el log.
+
+> RabbitMQ no permite redeclarar una cola o un exchange con otros argumentos o con otro tipo. Si el broker tiene una topología anterior, hay que borrar esas colas y exchanges (o el volumen) antes de arrancar los microservicios.
 
 **Nota sobre alta disponibilidad:** en RabbitMQ 4 las colas *classic* viven en un solo nodo. El clúster distribuye conexiones, colas y metadatos, y sobrevive a la caída de un nodo para las colas del otro. Para replicar el contenido de una cola se usan *quorum queues*, que con 2 nodos no toleran fallos porque necesitan mayoría: se requiere un tercer nodo.

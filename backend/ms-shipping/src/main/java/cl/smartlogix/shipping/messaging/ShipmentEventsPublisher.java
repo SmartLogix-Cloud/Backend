@@ -43,7 +43,8 @@ public class ShipmentEventsPublisher {
     private void send(String routingKey, Object event) {
         try {
             String json = objectMapper.writeValueAsString(event);
-            rabbitTemplate.convertAndSend(RabbitTopologyConfig.LOGISTICS_EXCHANGE, routingKey, json);
+            // Los eventos del dominio Envio viajan por el exchange TOPIC (enrutamiento por patron).
+            rabbitTemplate.convertAndSend(RabbitTopologyConfig.EVENTS_EXCHANGE, routingKey, json);
             log.info("Evento publicado [{}]: {}", routingKey, json);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("No se pudo serializar el evento " + routingKey, e);

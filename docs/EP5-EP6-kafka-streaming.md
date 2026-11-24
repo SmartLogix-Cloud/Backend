@@ -8,7 +8,7 @@
 | Entrega | Mensaje a una cola: se consume una vez y desaparece. ACK manual y DLQ. | Log persistente y particionado: cada consumer group lee todo a su ritmo, con retención y *replay*. |
 | Por qué | Ruteo flexible (topic), confirmación por mensaje y DLQ por cola. | Alto volumen, orden por clave, varios consumidores independientes y reconstrucción de estado. |
 
-Las integraciones existentes con RabbitMQ **no se modificaron** (salvo el DLX, que pasó a `direct`; ver `infra/rabbitmq/README.md`). Kafka se publica **además**, y después del commit de la transacción.
+Las integraciones de la EP2 con RabbitMQ **no se modificaron**: mismas colas, DLQ, exchanges `direct` y `topic` y administrador (ver `infra/rabbitmq/README.md`). Lo único que cambió es el despliegue: los dos nodos pasaron a dos instancias EC2 distintas. Kafka se publica **además**, y después del commit de la transacción.
 
 ## 2. Flujo de eventos
 
