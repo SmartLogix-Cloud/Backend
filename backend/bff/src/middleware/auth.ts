@@ -106,18 +106,63 @@ function scopesOf(user?: EntraJwtPayload): string[] {
 }
 
 /**
- * Middleware: exige que el token tenga al menos uno de los roles/scopes indicados.
- * Debe usarse DESPUÉS de requireAuth. Responde 403 si no cumple.
+ * Matriz RBAC perfil -> permisos (EP2).
+ *
+ * Entra ID emite en el claim `roles` un PERFIL grueso (Admin/Operador/Cliente) y
+ * es la aplicación (este BFF) la que lo expande a permisos finos. Es el patrón
+ * recomendado por Microsoft: el IdP define roles de negocio, la app define el
+ * vocabulario de permisos. Jerarquía: Admin ⊇ Operador ⊇ Cliente.
+ */
+const CLIENTE_PERMS = ["Inventory.Read", "Orders.Read", "Shipments.Read"];
+const OPERADOR_PERMS = [
+  ...CLIENTE_PERMS,
+  "Inventory.Write",
+  "Orders.Write",
+  "Shipments.Write",
+];
+const ADMIN_PERMS = [
+  ...OPERADOR_PERMS,
+  "Users.Read",
+  "Users.Write",
+  "Admin", // administración de la topología de RabbitMQ (/api/admin/*)
+];
+
+const PROFILE_PERMISSIONS: Record<string, string[]> = {
+  Cliente: CLIENTE_PERMS,
+  Operador: OPERADOR_PERMS,
+  Admin: ADMIN_PERMS,
+};
+
+/**
+ * Permisos efectivos del usuario. Expande los perfiles del claim `roles` según
+ * la matriz; además conserva compatibilidad con tokens que aún traigan permisos
+ * finos (p. ej. "Inventory.Read") o scopes delegados (`scp`).
+ */
+function grantedPermissions(user?: EntraJwtPayload): Set<string> {
+  const granted = new Set<string>();
+  for (const role of rolesOf(user)) {
+    const perms = PROFILE_PERMISSIONS[role];
+    if (perms) perms.forEach((p) => granted.add(p));
+    granted.add(role); // compatibilidad con roles finos legados
+  }
+  scopesOf(user).forEach((s) => granted.add(s));
+  return granted;
+}
+
+/**
+ * Middleware: exige que el usuario tenga al menos uno de los permisos indicados
+ * (resueltos a partir de su perfil). Debe usarse DESPUÉS de requireAuth.
+ * Responde 403 si no cumple.
  */
 export function requireRole(...allowed: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const granted = new Set([...rolesOf(req.user), ...scopesOf(req.user)]);
+    const granted = grantedPermissions(req.user);
     const ok = allowed.some((r) => granted.has(r));
     if (!ok) {
       return res.status(403).json({
         status: 403,
         title: "Acceso denegado",
-        detail: `Se requiere uno de los roles: ${allowed.join(", ")}`,
+        detail: `Se requiere uno de los permisos: ${allowed.join(", ")}`,
         timestamp: new Date().toISOString(),
       });
     }
