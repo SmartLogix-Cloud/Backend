@@ -8,8 +8,9 @@
 
 | Componente | README |
 |---|---|
-| Frontend (React 19 + TS + Tailwind) | [`frontend/README.md`](frontend/README.md) *(no incluido en repo, ver Vite + Tailwind)* |
-| BFF (Node.js 20 + Express) | [`backend/bff/README.md`](backend/bff/README.md) |
+| **Diagrama de arquitectura desplegada (EP6)**: Azure, API Gateway, EC2, RabbitMQ y Kafka | [`docs/arquitectura-smartlogix-ep6.drawio`](docs/arquitectura-smartlogix-ep6.drawio) (abrir en [app.diagrams.net](https://app.diagrams.net)) |
+| Frontend (React 19 + TS + Tailwind) | Repositorio aparte: [SmartLogix-Cloud/Frontend](https://github.com/SmartLogix-Cloud/Frontend) |
+| BFF (Node.js 20 + Express) · tests: `npm test` | [`backend/bff/README.md`](backend/bff/README.md) |
 | API Gateway (KrakenD) | [`backend/api-gateway/README.md`](backend/api-gateway/README.md) |
 | ms-order | [`backend/ms-order/README.md`](backend/ms-order/README.md) |
 | ms-inventory | [`backend/ms-inventory/README.md`](backend/ms-inventory/README.md) |
