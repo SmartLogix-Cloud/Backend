@@ -60,6 +60,17 @@ router.use(
   })
 );
 
+// Analitica en tiempo real alimentada por Kafka (ms-analytics): /analytics/summary,
+// /analytics/events, /analytics/incidents y /analytics/stream (SSE).
+router.use(
+  "/analytics",
+  createProxyMiddleware<Request>({
+    target: env.MS_ANALYTICS_URL,
+    changeOrigin: true,
+    pathRewrite: (_path, req) => req.originalUrl,
+  })
+);
+
 // Nota: /auth se eliminó. La autenticación ahora la provee Microsoft Entra ID
 // (IDaaS) vía MSAL en el frontend; el BFF ya no delega login a ms-auth.
 

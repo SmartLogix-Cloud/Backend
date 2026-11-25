@@ -1,0 +1,237 @@
+name: smartlogix-kafka
+
+# ===========================================================================
+# SmartLogix - Plataforma de streaming Kafka (EP5 / EP6)
+# ---------------------------------------------------------------------------
+#   - 3 nodos Zookeeper (ensemble con quorum: tolera la caida de 1 nodo)
+#   - 3 brokers Kafka   (replication.factor=3, min.insync.replicas=2:
+#                        tolera la caida de 1 broker sin perder escrituras)
+#   - kafka-init        (job one-shot que crea los topicos con su configuracion)
+#   - kafka-ui          (administracion de brokers, topicos, particiones,
+#                        mensajes, consumer groups, offsets y lag)
+#
+# Listeners de cada broker:
+#   INTERNAL  kafkaN:29092                   -> trafico entre brokers y kafka-ui
+#   EXTERNAL  ${KAFKA_ADVERTISED_HOST}:909N  -> microservicios (otra EC2 o host local)
+#
+# Levantar:  cp .env.example .env   (ajustar KAFKA_ADVERTISED_HOST)
+#            docker compose up -d
+# ===========================================================================
+
+x-zookeeper-env: &zookeeper-env
+  ZOOKEEPER_CLIENT_PORT: 2181
+  ZOOKEEPER_TICK_TIME: 2000
+  ZOOKEEPER_INIT_LIMIT: 5
+  ZOOKEEPER_SYNC_LIMIT: 2
+  ZOOKEEPER_SERVERS: "zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888"
+  KAFKA_HEAP_OPTS: "-Xms128m -Xmx256m"
+
+x-kafka-env: &kafka-env
+  KAFKA_ZOOKEEPER_CONNECT: "zookeeper1:2181,zookeeper2:2181,zookeeper3:2181"
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+  KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  # Durabilidad por defecto del cluster
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_NUM_PARTITIONS: 3
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
+  # Los topicos se crean de forma controlada (kafka-init / ms-broker-admin), nunca implicitamente
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_DELETE_TOPIC_ENABLE: "true"
+  KAFKA_LOG_RETENTION_HOURS: 168
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 3000
+  KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+  KAFKA_JMX_PORT: 9997
+
+x-zookeeper-healthcheck: &zookeeper-healthcheck
+  test: ["CMD-SHELL", "echo srvr | nc -w 2 localhost 2181 | grep -q Mode || exit 1"]
+  interval: 10s
+  timeout: 5s
+  retries: 10
+
+x-kafka-healthcheck: &kafka-healthcheck
+  test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:29092 > /dev/null 2>&1 || exit 1"]
+  interval: 15s
+  timeout: 10s
+  retries: 10
+  start_period: 30s
+
+networks:
+  kafka:
+    name: smartlogix_kafka
+
+volumes:
+  zk1-data:
+  zk1-log:
+  zk2-data:
+  zk2-log:
+  zk3-data:
+  zk3-log:
+  kafka1-data:
+  kafka2-data:
+  kafka3-data:
+
+services:
+  # ===========================================================
+  # Zookeeper ensemble (metadatos del cluster y eleccion del controller)
+  # ===========================================================
+  zookeeper1:
+    image: confluentinc/cp-zookeeper:7.6.1
+    hostname: zookeeper1
+    container_name: smartlogix-zookeeper1
+    restart: unless-stopped
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 1
+    volumes:
+      - zk1-data:/var/lib/zookeeper/data
+      - zk1-log:/var/lib/zookeeper/log
+    networks: [kafka]
+    healthcheck: *zookeeper-healthcheck
+
+  zookeeper2:
+    image: confluentinc/cp-zookeeper:7.6.1
+    hostname: zookeeper2
+    container_name: smartlogix-zookeeper2
+    restart: unless-stopped
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 2
+    volumes:
+      - zk2-data:/var/lib/zookeeper/data
+      - zk2-log:/var/lib/zookeeper/log
+    networks: [kafka]
+    healthcheck: *zookeeper-healthcheck
+
+  zookeeper3:
+    image: confluentinc/cp-zookeeper:7.6.1
+    hostname: zookeeper3
+    container_name: smartlogix-zookeeper3
+    restart: unless-stopped
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 3
+    volumes:
+      - zk3-data:/var/lib/zookeeper/data
+      - zk3-log:/var/lib/zookeeper/log
+    networks: [kafka]
+    healthcheck: *zookeeper-healthcheck
+
+  # ===========================================================
+  # Brokers Kafka
+  # ===========================================================
+  kafka1:
+    image: confluentinc/cp-kafka:7.6.1
+    hostname: kafka1
+    container_name: smartlogix-kafka1
+    restart: unless-stopped
+    depends_on:
+      zookeeper1: { condition: service_healthy }
+      zookeeper2: { condition: service_healthy }
+      zookeeper3: { condition: service_healthy }
+    ports:
+      - "9092:9092"
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 1
+      KAFKA_BROKER_RACK: rack-1
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka1:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-localhost}:9092"
+      KAFKA_JMX_HOSTNAME: kafka1
+    volumes:
+      - kafka1-data:/var/lib/kafka/data
+    networks: [kafka]
+    healthcheck: *kafka-healthcheck
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.6.1
+    hostname: kafka2
+    container_name: smartlogix-kafka2
+    restart: unless-stopped
+    depends_on:
+      zookeeper1: { condition: service_healthy }
+      zookeeper2: { condition: service_healthy }
+      zookeeper3: { condition: service_healthy }
+    ports:
+      - "9093:9093"
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 2
+      KAFKA_BROKER_RACK: rack-2
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka2:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-localhost}:9093"
+      KAFKA_JMX_HOSTNAME: kafka2
+    volumes:
+      - kafka2-data:/var/lib/kafka/data
+    networks: [kafka]
+    healthcheck: *kafka-healthcheck
+
+  kafka3:
+    image: confluentinc/cp-kafka:7.6.1
+    hostname: kafka3
+    container_name: smartlogix-kafka3
+    restart: unless-stopped
+    depends_on:
+      zookeeper1: { condition: service_healthy }
+      zookeeper2: { condition: service_healthy }
+      zookeeper3: { condition: service_healthy }
+    ports:
+      - "9094:9094"
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 3
+      KAFKA_BROKER_RACK: rack-3
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9094"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka3:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-localhost}:9094"
+      KAFKA_JMX_HOSTNAME: kafka3
+    volumes:
+      - kafka3-data:/var/lib/kafka/data
+    networks: [kafka]
+    healthcheck: *kafka-healthcheck
+
+  # ===========================================================
+  # Job one-shot: crea los topicos (idempotente, --if-not-exists)
+  # ===========================================================
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: smartlogix-kafka-init
+    restart: "no"
+    depends_on:
+      kafka1: { condition: service_healthy }
+      kafka2: { condition: service_healthy }
+      kafka3: { condition: service_healthy }
+    environment:
+      BOOTSTRAP: "kafka1:29092,kafka2:29092,kafka3:29092"
+    volumes:
+      - ./create-topics.sh:/scripts/create-topics.sh:ro
+    entrypoint: ["bash", "/scripts/create-topics.sh"]
+    networks: [kafka]
+
+  # ===========================================================
+  # Kafka UI - administracion y monitoreo (offsets, lag, particiones)
+  # ===========================================================
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: smartlogix-kafka-ui
+    restart: unless-stopped
+    depends_on:
+      kafka1: { condition: service_healthy }
+      kafka2: { condition: service_healthy }
+      kafka3: { condition: service_healthy }
+    ports:
+      - "${KAFKA_UI_PORT:-8088}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: smartlogix
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka1:29092,kafka2:29092,kafka3:29092"
+      KAFKA_CLUSTERS_0_ZOOKEEPER: "zookeeper1:2181,zookeeper2:2181,zookeeper3:2181"
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9997
+      KAFKA_CLUSTERS_0_METRICS_TYPE: JMX
+      DYNAMIC_CONFIG_ENABLED: "true"
+      # Login basico: la UI queda expuesta en la EC2, no dejarla abierta
+      AUTH_TYPE: LOGIN_FORM
+      SPRING_SECURITY_USER_NAME: ${KAFKA_UI_USER:-admin}
+      SPRING_SECURITY_USER_PASSWORD: ${KAFKA_UI_PASSWORD:?Definir KAFKA_UI_PASSWORD en .env}
+    networks: [kafka]

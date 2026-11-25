@@ -12,6 +12,7 @@ import ordersRouter from "./routes/orders.js";
 import dashboardRouter from "./routes/dashboard.js";
 import inventoryRouter from "./routes/inventory.js";
 import demoRouter from "./routes/demo.js";
+import adminRouter from "./routes/admin.js";
 import proxyRouter from "./routes/proxy.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import { requireAuth, authorizeResource, requireRole } from "./middleware/auth.js";
@@ -35,6 +36,10 @@ app.use("/shipments", authorizeResource("Shipments"));
 app.use("/users", authorizeResource("Users"));
 app.use("/checkout", requireRole("Orders.Write"));
 app.use("/dashboard", requireRole("Orders.Read", "Orders.Write"));
+// Analitica en tiempo real (Kafka -> ms-analytics): mismo permiso que el dashboard
+app.use("/analytics", requireRole("Orders.Read", "Orders.Write"));
+// Administración de la topología de RabbitMQ: SOLO perfil Admin (P9 de la guía EP2).
+app.use("/api/admin", requireRole("Admin"));
 
 // Endpoints propios del BFF (compuestos) van antes del proxy.
 app.use(checkoutRouter);
@@ -42,6 +47,7 @@ app.use(ordersRouter);
 app.use(dashboardRouter);
 app.use(inventoryRouter);
 app.use(demoRouter);
+app.use(adminRouter);
 
 // Passthrough genérico para CRUD simple de los MS.
 app.use(proxyRouter);
@@ -59,6 +65,7 @@ app.listen(env.PORT, "0.0.0.0", () => {
   console.log(`  -> order:     ${env.MS_ORDER_URL}`);
   console.log(`  -> shipping:  ${env.MS_SHIPPING_URL}`);
   console.log(`  -> user:      ${env.MS_USER_URL}`);
+  console.log(`  -> analytics: ${env.MS_ANALYTICS_URL}`);
   console.log(`  -> auth:      Microsoft Entra ID (issuer ${env.AZURE_ISSUER || "sin configurar"})`);
   console.log(`  -> docs:      http://localhost:${env.PORT}/docs`);
 });

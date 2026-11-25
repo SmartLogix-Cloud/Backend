@@ -35,6 +35,9 @@ class OrderServiceImplTest {
     @Mock
     private OrderEventsPublisher eventsPublisher;
 
+    @Mock
+    private cl.smartlogix.order.streaming.OrderEventProducer streamProducer;
+
     private OrderServiceImpl service;
 
     private CreateOrderRequest request;
@@ -45,7 +48,7 @@ class OrderServiceImplTest {
         // Provider real con los dos creadores concretos (Factory Method).
         OrderFactoryProvider factoryProvider = new OrderFactoryProvider(
                 List.of(new StandardOrderFactory(), new ExpressOrderFactory()));
-        service = new OrderServiceImpl(repository, factoryProvider, eventsPublisher);
+        service = new OrderServiceImpl(repository, factoryProvider, eventsPublisher, streamProducer);
 
         CreateOrderRequest.ItemRequest item =
                 new CreateOrderRequest.ItemRequest(

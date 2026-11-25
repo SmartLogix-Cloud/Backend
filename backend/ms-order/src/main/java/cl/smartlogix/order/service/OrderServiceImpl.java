@@ -8,6 +8,7 @@ import cl.smartlogix.order.factory.OrderFactoryProvider;
 import cl.smartlogix.order.messaging.OrderEventsPublisher;
 import cl.smartlogix.order.model.*;
 import cl.smartlogix.order.repository.OrderRepository;
+import cl.smartlogix.order.streaming.OrderEventProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -42,6 +43,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository repository;
     private final OrderFactoryProvider factoryProvider;
     private final OrderEventsPublisher eventsPublisher;
+    private final OrderEventProducer streamProducer;
 
     @Override
     public OrderDto create(CreateOrderRequest req) {
@@ -53,7 +55,10 @@ public class OrderServiceImpl implements OrderService {
         OrderFactory factory = factoryProvider.forType(req.type());
         Order order = factory.build(req, generateCode());
 
-        return OrderDto.from(repository.save(order));
+        Order saved = repository.save(order);
+        // Streaming (Kafka): historial de eventos para analitica / otros suscriptores.
+        streamProducer.publishCreated(saved);
+        return OrderDto.from(saved);
     }
 
     @Override
@@ -151,6 +156,9 @@ public class OrderServiceImpl implements OrderService {
             .newStatus(next)
             .reason(reason)
             .build());
+        // Toda transicion (manual o provocada por eventos de envio via RabbitMQ) se
+        // publica en Kafka; el envio ocurre tras el commit de la transaccion.
+        streamProducer.publishStatusChanged(order, current, reason);
     }
 
     private Order find(Long id) {
