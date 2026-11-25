@@ -1,0 +1,304 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="smartlogix-ep6" name="Arquitectura EP6">
+    <mxGraphModel dx="1800" dy="1250" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1250" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===================== Título ===================== -->
+        <mxCell id="title" value="&lt;b&gt;SmartLogix — Arquitectura EP6&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot;&gt;Frontend e IDaaS en Azure · API Gateway, backend, RabbitMQ (2 nodos en 2 EC2) y Kafka (3 Zookeeper + 3 brokers) en AWS&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=20;fontColor=#0B1C30;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1100" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Contenedores ===================== -->
+        <mxCell id="azure" value="Microsoft Azure" style="rounded=1;arcSize=3;whiteSpace=wrap;html=1;fillColor=#EEF6FC;strokeColor=#0078D4;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontColor=#0078D4;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="110" y="200" width="280" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="aws" value="AWS Cloud · us-east-1 (Learner Lab)" style="shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;html=1;whiteSpace=wrap;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="420" y="70" width="1360" height="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="vpc" value="VPC vpc-0b0b684e6a0524653 · subnet us-east-1b" style="shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc2;strokeColor=#8C4FFF;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#8C4FFF;dashed=0;html=1;whiteSpace=wrap;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="440" y="250" width="1320" height="950" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2be" value="EC2 smartlogix-backend · Ubuntu 22.04 · 172.31.42.65 · SG smartlogix-sg · docker-compose.aws.yml" style="shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_ec2_instance_contents;strokeColor=#D86613;fillColor=#FFFBF7;verticalAlign=top;align=left;spacingLeft=30;fontColor=#D86613;dashed=0;html=1;whiteSpace=wrap;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="460" y="290" width="640" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2mq1" value="EC2 smartlogix-mq1 · t3.large · 172.31.40.10 · SG smartlogix-mq-sg · /opt/smartlogix/infra" style="shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_ec2_instance_contents;strokeColor=#D86613;fillColor=#FFFBF7;verticalAlign=top;align=left;spacingLeft=30;fontColor=#D86613;dashed=0;html=1;whiteSpace=wrap;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="290" width="600" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2mq2" value="EC2 smartlogix-mq2 · t3.small · 172.31.40.11 · SG smartlogix-mq-sg" style="shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_ec2_instance_contents;strokeColor=#D86613;fillColor=#FFFBF7;verticalAlign=top;align=left;spacingLeft=30;fontColor=#D86613;dashed=0;html=1;whiteSpace=wrap;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="960" width="600" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="kafkagrp" value="Clúster Kafka · Docker Compose · confluentinc/cp-kafka 7.6.1" style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;fillColor=#F7F2FA;strokeColor=#9673A6;dashed=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontColor=#6B4C80;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="430" width="560" height="480" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Usuario ===================== -->
+        <mxCell id="user" value="Usuario&lt;br&gt;(Admin / Operador / Cliente)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="255" width="36" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Azure ===================== -->
+        <mxCell id="front" value="&lt;b&gt;Frontend React 19 + MSAL&lt;/b&gt;&lt;br&gt;Azure Static Website ($web)&lt;br&gt;&lt;i&gt;smartlogixfrontduoc&lt;/i&gt;&lt;br&gt;Pedidos · Envíos · Streaming en Vivo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="130" y="245" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="entra" value="&lt;b&gt;Microsoft Entra ID (IDaaS)&lt;/b&gt;&lt;br&gt;Tenant + usuarios registrados&lt;br&gt;App roles: Admin / Operador / Cliente&lt;br&gt;OAuth 2.0 / OIDC + PKCE&lt;br&gt;Emite JWT RS256 (scope access_as_user)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#0078D4;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="130" y="440" width="240" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== API Gateway ===================== -->
+        <mxCell id="apigw" value="&lt;b&gt;AWS API Gateway (HTTP API)&lt;/b&gt;&lt;br&gt;Autorizador JWT: issuer + audience de Entra&lt;br&gt;Rechaza sin token / token inválido (401) · CORS" style="outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=middle;labelPosition=right;align=left;spacingLeft=8;verticalAlign=middle;html=1;fontSize=11;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" vertex="1" parent="1">
+          <mxGeometry x="640" y="130" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Backend EC2 ===================== -->
+        <mxCell id="bff" value="&lt;b&gt;BFF Node.js 20 (:3000)&lt;/b&gt;&lt;br&gt;Revalida JWT de Entra&lt;br&gt;RBAC: perfil → permisos" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="640" y="330" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="brokeradmin" value="&lt;b&gt;ms-broker-admin&lt;/b&gt;&lt;br&gt;Admin RabbitMQ + Kafka&lt;br&gt;(/api/admin solo Admin)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="930" y="330" width="155" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="msinv" value="&lt;b&gt;ms-inventory&lt;/b&gt;&lt;br&gt;Productos y stock" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="475" y="460" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="msorder" value="&lt;b&gt;ms-order&lt;/b&gt;&lt;br&gt;Produce order-events&lt;br&gt;Consume shipment-events&lt;br&gt;(proyección seguimiento)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="597" y="460" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="msship" value="&lt;b&gt;ms-shipping&lt;/b&gt;&lt;br&gt;Produce shipment-events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="719" y="460" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="msuser" value="&lt;b&gt;ms-user&lt;/b&gt;&lt;br&gt;Usuarios" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="841" y="460" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="msanalytics" value="&lt;b&gt;ms-analytics&lt;/b&gt;&lt;br&gt;Consume ambos tópicos&lt;br&gt;Métricas en memoria&lt;br&gt;REST + SSE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="963" y="460" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dbinv" value="db-inventory" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#F5F5F5;strokeColor=#666666;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="485" y="600" width="90" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="dborder" value="db-order" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#F5F5F5;strokeColor=#666666;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="607" y="600" width="90" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="dbship" value="db-shipping" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#F5F5F5;strokeColor=#666666;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="729" y="600" width="90" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="dbuser" value="db-user" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#F5F5F5;strokeColor=#666666;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="851" y="600" width="90" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="benote" value="PostgreSQL 16 por servicio (Flyway), sin FKs cruzadas.&lt;br&gt;ms-analytics no tiene BD: al arrancar hace &lt;i&gt;replay&lt;/i&gt; de los tópicos." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="475" y="700" width="610" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== RabbitMQ ===================== -->
+        <mxCell id="rabbit1" value="&lt;b&gt;RabbitMQ rabbit1&lt;/b&gt;&lt;br&gt;AMQP :5672 · UI :15672" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="330" width="200" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="rabbit2" value="&lt;b&gt;RabbitMQ rabbit2&lt;/b&gt;&lt;br&gt;AMQP :5672 · UI :15672" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="1010" width="200" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="rabbitnote" value="Clúster de 2 nodos en 2 EC2 (Erlang cookie compartida).&lt;br&gt;Colas classic: viven en el nodo que las declara." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontColor=#8A5A00;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="1010" width="340" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="topology" value="&lt;b&gt;Topología RabbitMQ (EP2, sin cambios)&lt;/b&gt;&lt;br&gt;Exchanges: &lt;b&gt;smartlogix.commands&lt;/b&gt; (direct) · &lt;b&gt;smartlogix.events&lt;/b&gt; (topic) · &lt;b&gt;smartlogix.dlx&lt;/b&gt; (direct)&lt;br&gt;Colas (cada una con .dlq y listener · TTL 5 min · máx. 10.000 mensajes):&lt;br&gt;• shipping.order-ready.q ← commands / order.ready-for-shipment → ms-shipping crea el envío&lt;br&gt;• shipping.order-cancelled.q ← commands / order.cancelled&lt;br&gt;• order.shipment-delivered.q ← events / shipment.delivered → pedido FINALIZADO&lt;br&gt;• order.shipment-lost.q ← events / shipment.lost → pedido INCIDENCIA&lt;br&gt;• order.customer-notify.q ← events / shipment.# (notificación)&lt;br&gt;• shipping.audit.q ← events / # (auditoría)" style="rounded=1;arcSize=3;whiteSpace=wrap;html=1;fillColor=#FFF8F0;strokeColor=#D79B00;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="460" y="830" width="640" height="190" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Kafka ===================== -->
+        <mxCell id="zklabel" value="Ensemble Zookeeper · quorum 2 de 3 · metadatos y elección del controller" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#7F6000;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="460" width="520" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="zk1" value="zookeeper1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1185" y="485" width="150" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="zk2" value="zookeeper2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1365" y="485" width="150" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="zk3" value="zookeeper3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1545" y="485" width="150" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="k1" value="&lt;b&gt;kafka1&lt;/b&gt; :9092&lt;br&gt;rack-1 · controller" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1185" y="590" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="k2" value="&lt;b&gt;kafka2&lt;/b&gt; :9093&lt;br&gt;rack-2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1365" y="590" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="k3" value="&lt;b&gt;kafka3&lt;/b&gt; :9094&lt;br&gt;rack-3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1545" y="590" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="durability" value="RF 3 · min.insync.replicas 2 · acks=all · idempotencia · unclean.leader.election=false · auto.create.topics=false" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#6B4C80;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="652" width="520" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="topics" value="&lt;b&gt;Tópicos&lt;/b&gt; (3 particiones · 3 réplicas)&lt;br&gt;• &lt;b&gt;smartlogix.order-events&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;key = orderId · delete · 7 días&lt;br&gt;• &lt;b&gt;smartlogix.shipment-events&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;key = shipmentId · compact,delete · 30 días&lt;br&gt;• *.DLT · delete · 14 días&lt;br&gt;&lt;br&gt;&lt;b&gt;Consumer groups&lt;/b&gt; (concurrency 3)&lt;br&gt;• ms-analytics-orders → order-events&lt;br&gt;• ms-analytics-shipments → shipment-events&lt;br&gt;• ms-order-shipment-tracking → shipment-events" style="rounded=1;arcSize=3;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673A6;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="685" width="320" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="kafkaui" value="&lt;b&gt;Kafka UI&lt;/b&gt; :8088&lt;br&gt;provectuslabs v0.7.2&lt;br&gt;Brokers · tópicos · mensajes&lt;br&gt;consumer groups · lag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="700" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="kafkainit" value="kafka-init&lt;br&gt;(crea tópicos, idempotente)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673A6;dashed=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="810" width="170" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Leyenda ===================== -->
+        <mxCell id="legend" value="&lt;b&gt;Leyenda&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#1F5FBF&quot;&gt;━━&lt;/font&gt; HTTPS / REST&lt;br&gt;&lt;font color=&quot;#0078D4&quot;&gt;╍╍&lt;/font&gt; Autenticación (OIDC / JWT / JWKS)&lt;br&gt;&lt;font color=&quot;#D79B00&quot;&gt;━━&lt;/font&gt; AMQP (RabbitMQ: comandos y eventos)&lt;br&gt;&lt;font color=&quot;#9673A6&quot;&gt;━━&lt;/font&gt; Kafka (producción / consumo)&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;━━&lt;/font&gt; JDBC (PostgreSQL)&lt;br&gt;&lt;br&gt;&lt;b&gt;Puertos expuestos&lt;/b&gt;&lt;br&gt;• BFF :3000 → solo API Gateway (recomendado)&lt;br&gt;• Kafka 9092-9094 y AMQP 5672 → solo desde smartlogix-sg&lt;br&gt;• Kafka UI 8088 y RabbitMQ UI 15672 → navegador (con login)" style="rounded=1;arcSize=3;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B3B3B3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="20" y="640" width="380" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Conexiones: HTTP y autenticación ===================== -->
+        <mxCell id="e_user_front" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#1F5FBF;strokeWidth=2;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="user" target="front">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_front_entra" value="1. Login OIDC + PKCE&lt;br&gt;2. Devuelve JWT" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;startArrow=block;dashed=1;strokeColor=#0078D4;strokeWidth=2;fontSize=10;labelBackgroundColor=#EEF6FC;" edge="1" parent="1" source="front" target="entra">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_front_apigw" value="3. HTTPS · Authorization: Bearer JWT" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#1F5FBF;strokeWidth=2;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="front" target="apigw">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="250" y="160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_apigw_entra" value="valida firma (JWKS)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#0078D4;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="apigw" target="entra">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="405" y="175" />
+              <mxPoint x="405" y="495" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_apigw_bff" value="4. HTTP :3000" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#1F5FBF;strokeWidth=2;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="apigw" target="bff">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- BFF -> microservicios -->
+        <mxCell id="e_bff_inv" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#1F5FBF;" edge="1" parent="1" source="bff" target="msinv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bff_order" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#1F5FBF;" edge="1" parent="1" source="bff" target="msorder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bff_ship" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#1F5FBF;" edge="1" parent="1" source="bff" target="msship">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bff_user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#1F5FBF;" edge="1" parent="1" source="bff" target="msuser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bff_analytics" value="SSE" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#1F5FBF;fontSize=9;labelBackgroundColor=#FFFBF7;" edge="1" parent="1" source="bff" target="msanalytics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bff_admin" value="/api/admin" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#1F5FBF;fontSize=9;labelBackgroundColor=#FFFBF7;" edge="1" parent="1" source="bff" target="brokeradmin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Microservicios -> BD -->
+        <mxCell id="e_inv_db" style="rounded=1;html=1;endArrow=block;strokeColor=#666666;" edge="1" parent="1" source="msinv" target="dbinv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_order_db" style="rounded=1;html=1;endArrow=block;strokeColor=#666666;" edge="1" parent="1" source="msorder" target="dborder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ship_db" style="rounded=1;html=1;endArrow=block;strokeColor=#666666;" edge="1" parent="1" source="msship" target="dbship">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_user_db" style="rounded=1;html=1;endArrow=block;strokeColor=#666666;" edge="1" parent="1" source="msuser" target="dbuser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Conexiones: RabbitMQ ===================== -->
+        <mxCell id="e_order_rabbit" value="AMQP :5672&lt;br&gt;comandos (direct) / eventos (topic)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;startArrow=block;strokeColor=#D79B00;strokeWidth=2;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="msorder" target="rabbit1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="652" y="570" />
+              <mxPoint x="1120" y="570" />
+              <mxPoint x="1120" y="379" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_ship_rabbit" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;startArrow=block;strokeColor=#D79B00;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="msship">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="774" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_rabbit_cluster" value="clúster&lt;br&gt;4369 / 25672" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;startArrow=block;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="rabbit1" target="rabbit2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1150" y="362" />
+              <mxPoint x="1150" y="1042" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_admin_rabbit" value="Management API" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#D79B00;fontSize=9;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" source="brokeradmin" target="rabbit1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Conexiones: Kafka ===================== -->
+        <mxCell id="e_order_kafka" value="produce order-events&lt;br&gt;consume shipment-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;startArrow=block;strokeColor=#9673A6;strokeWidth=2;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.875;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="msorder" target="k1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="713" y="530" />
+              <mxPoint x="713" y="760" />
+              <mxPoint x="1130" y="760" />
+              <mxPoint x="1130" y="617" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_ship_kafka" value="produce shipment-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#9673A6;strokeWidth=2;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" source="msship" target="k1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="835" y="520" />
+              <mxPoint x="835" y="580" />
+              <mxPoint x="1110" y="580" />
+              <mxPoint x="1110" y="604" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_kafka_analytics" value="consume (2 grupos)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#9673A6;strokeWidth=2;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="k1" target="msanalytics">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1120" y="631" />
+              <mxPoint x="1120" y="680" />
+              <mxPoint x="1023" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_admin_kafka" value="AdminClient" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#9673A6;fontSize=9;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="brokeradmin" target="kafkagrp">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1110" y="383" />
+              <mxPoint x="1110" y="430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Brokers <-> Zookeeper y replicación -->
+        <mxCell id="e_k1_zk" style="rounded=1;html=1;endArrow=none;strokeColor=#D6B656;" edge="1" parent="1" source="k1" target="zk1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_k2_zk" style="rounded=1;html=1;endArrow=none;strokeColor=#D6B656;" edge="1" parent="1" source="k2" target="zk2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_k3_zk" style="rounded=1;html=1;endArrow=none;strokeColor=#D6B656;" edge="1" parent="1" source="k3" target="zk3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_zk12" style="rounded=1;html=1;endArrow=none;dashed=1;strokeColor=#D6B656;" edge="1" parent="1" source="zk1" target="zk2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_zk23" style="rounded=1;html=1;endArrow=none;dashed=1;strokeColor=#D6B656;" edge="1" parent="1" source="zk2" target="zk3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_k12" value="replicación" style="rounded=1;html=1;endArrow=block;startArrow=block;dashed=1;strokeColor=#9673A6;fontSize=9;labelBackgroundColor=#F7F2FA;" edge="1" parent="1" source="k1" target="k2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_k23" value="replicación" style="rounded=1;html=1;endArrow=block;startArrow=block;dashed=1;strokeColor=#9673A6;fontSize=9;labelBackgroundColor=#F7F2FA;" edge="1" parent="1" source="k2" target="k3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ui_k3" value="monitorea" style="rounded=1;html=1;endArrow=block;strokeColor=#B85450;fontSize=9;labelBackgroundColor=#F7F2FA;" edge="1" parent="1" source="kafkaui" target="k3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
